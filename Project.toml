@@ -1,0 +1,14 @@
+name = "SAShE"
+uuid = "83401093-d8e7-49c8-a98d-2b177fad4d3a"
+authors = ["Pedro Ribeiro de Almeida <pedroribalmeida@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+
+[compat]
+DataFrames = "1.7.0"
+Distributed = "1.11.0"
+ProgressMeter = "1.10.4"
