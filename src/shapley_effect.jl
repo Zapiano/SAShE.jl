@@ -28,6 +28,7 @@ struct Problem
     Φ_var_increments::Matrix{Float64}
     n_samples::Int64
 
+    # TODO Rename Problem to Model?
     function Problem(func::Function, X1::DataFrame, X2::DataFrame)
         # Validate inputs
         _validate_problem(X1, X2)
@@ -112,6 +113,7 @@ function shapley_effects(
     return (Φₙ_increments, Φₙ_var_increments, Yₙ)
 end
 
+# TODO Rename `solve` to `shapley_effect` ?
 function solve(_problem::Problem)
     n_samples = _problem.n_samples
 
@@ -132,22 +134,12 @@ function solve(_problem::Problem)
         fill(_problem.n_samples, n_samples)
     )
 
+    # TODO Return a better object, either a `Solution` or a new version of `Problem`
+
     return hcat([r[1] for r in res]...), hcat([r[2] for r in res]...), [r[3] for r in res]
 end
 
-
-
-# Example
-#
-# dom = load_domain("...")
-# X1 = sample(...)
-# X2 = sample(...)
-# df_row= X1[1, :]
-#
-# function adria_func(x::Vector)
-#   df_row .= x
-#   return sum(@view ADRIA.run_model(dom, df_row).raw[end, :, :])
-# end
-#
-# problem(adria_func, X1, X2)
-# Φₙ, Φₙ_var, Yₙ = solve(problem)
+function Base.:show(io::IO, p::Problem)
+    println(p.func)
+    println("n_samples: ", p.n_samples)
+end
