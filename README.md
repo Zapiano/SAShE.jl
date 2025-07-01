@@ -1,6 +1,8 @@
 # SAShE.jl
 
-This package performs a Sensitivity Analysis using Shapley Effects given a model `my_func` that accepts a vector of factors `X`. The approach implemented here was presented in [1].
+This package performs a Sensitivity Analysis using Shapley Effects given a model `my_func` that accepts a vector of factors `X`. The approach implemented here was presented in [1]. If the user is using `Distributed` and has added some procs with `addprocs` the solution will be run in multiple cores.
+
+The "examples/ishigami.jl" script can be used to compare the result of this implementation with the one from the paper for the Ishigami function.
 
 # Quick start
 
@@ -31,7 +33,7 @@ sa_problem = SAShE.Problem(my_func, X1, X2)
 Φₙ, Φₙ_var, Yₙ = SAShE.solve(sa_problem)
 
 # Vector of Shapley Effects for each factor
-Φ = sum(dims=2)
+Φ = sum(Φₙ, dims=2)
 ```
 
 If/when the analysis converges, the sum of the Shapley Effects of all factors should approach the total variance of the model.
