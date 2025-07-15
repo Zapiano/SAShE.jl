@@ -30,18 +30,36 @@ Then create a `SAShE.Problem` instance and solve it:
 using SAShE
 
 sa_problem = SAShE.Problem(my_func, X1, X2)
-Φₙ, Φₙ_var, Yₙ = SAShE.solve(sa_problem)
+Φ, Φ², Yₙ = SAShE.solve(sa_problem)
+```
 
+The three objects returned are:
+
+- `Φₙ` : The contribution that each sample gives to the each factor's Shapley Effect expected value. The Shapley Effect for each factor, `Φ`, can be calculated by summing all columns of each row of `Φₙ`;
+- `Φ²ₙ` : The contribution that each sample gives to each Shapley Effect squared expected valued (`E[Φ²]`). This can be used to calculate the confidence intervals (see below);
+- `Yₙ` : The value of the model calculated for each sample on `X1`. Besides being used in the Shapley Effects computation, the variance of `Yₙ` can be compared to the sum of the estimated Shapley Effects `Φ`. If the algorithm has converged, the sum of all Shapley Effects should approach the model's variance.
+
+## Shapley effects and confidence intervals
+
+The function `shapley_effects` returns each factor's Shapley Effect. If used with the second argument `Φ²ₙ`, it also returns the lower and upper bounds of each factor's Shapley Effect confidence interval.
+
+```
 # Vector of Shapley Effects for each factor
-Φ = sum(Φₙ, dims=2)
+Φ = SAShE.shapley_effects(Φₙ)
+
+# Or with confidence intervals
+
+Φ, Φ_lb , Φ_ub = SAShE.shapley_effects(Φₙ, Φ²ₙ)
 ```
 
-If/when the analysis converges, the sum of the Shapley Effects of all factors should approach the total variance of the model.
+The confidence intervals and margin of errors can also be accessed directly via:
 
 ```
-using Statistics
+# Margin of error
+SAShE.margin_of_error(Φₙ, Φ²ₙ)
 
-min(var(Yₙ), sum(Φ))/max(var(Yₙ), sum(Φ)) > 0.95
+# Confidence interval
+SAShE.confint(Φₙ, Φ²ₙ)
 ```
 
 # Reference
