@@ -1,5 +1,6 @@
 # Example with the ishigami function, the first from the paper
-# Also shows how to use Distributed to
+
+using Distributed
 
 Distributed.addprocs(5)     # replace by a reasonable number.
 
@@ -8,7 +9,6 @@ Distributed.addprocs(5)     # replace by a reasonable number.
     using DataFrames
     using Random
     using Distributions
-    using Distributed
 
     Random.seed!(0987)
 
@@ -31,11 +31,10 @@ Distributed.addprocs(5)     # replace by a reasonable number.
     sa_problem = SAShE.Problem(ishigami, samples1, samples2)
 end
 
-Φₙ, Φₙ_var, Yₙ = SAShE.solve(sa_problem)
+Φₙ, Φ²ₙ, Yₙ = SAShE.solve(sa_problem)
+Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)
+Φ_confint = SAShE.confint(Φₙ, Φ²ₙ)
+Φ_moe = SAShE.margin_of_error(Φₙ, Φ²ₙ)
 
-Φ = sum(Φₙ, dims=2)
-
-var(Yₙ)
-sum(Φ)
-
+# Compare model variance with sum of Shapley Effects
 min(var(Yₙ), sum(Φ)) / max(var(Yₙ), sum(Φ)) > 0.95
