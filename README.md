@@ -1,5 +1,7 @@
 # SAShE.jl
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16777876.svg)](https://doi.org/10.5281/zenodo.16777876)
+
 This package performs a Sensitivity Analysis using Shapley Effects given a model in the form of a function, referred to here as `my_model`, that accepts a vector of factors `X`. The approach implemented here was presented in [1]. If the user is using `Distributed` and has added some procs with `addprocs`, `SAShE.solve` will be run using multiple cores.
 
 The "examples/ishigami.jl" script can be used to compare the result of this implementation with the one from the paper for the Ishigami function.
