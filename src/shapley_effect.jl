@@ -105,32 +105,29 @@ function _shapley_effect_iteration(
     func::Function,
     X1ₙ::DataFrameRow,
     X2ₙ::DataFrameRow,
-    πₙ::Vector{Int64},          # A row of the permutation matrix.
-    Yₙ::Float64,
-    Yₙ⁻::Vector{Float64},
-    Yₙ⁺::Vector{Float64},
-    Φₙ_increments::Vector{Float64},
-    Φₙ²_increments::Vector{Float64},
-    factor_names::Vector{String},
+    πₙ::AbstractVector{Int64},          # A row of the permutation matrix.
+    Yₙ⁻::AbstractVector{Float64},
+    Yₙ⁺::AbstractVector{Float64},
+    Φₙ_increments::AbstractVector{Float64},
+    Φₙ²_increments::AbstractVector{Float64},
     n_samples::Int64,
 )
-    Zₙ = deepcopy(X1ₙ)
-    Yₙ = func(collect(Zₙ)) #sum(@view ADRIA.run_model(dom, X1ₙ).raw[end, :, :])
+    _X1 = collect(X1ₙ)
+    _X2 = collect(X2ₙ)
+    Zₙ = collect(X1ₙ)
+    Yₙ = func(_X1)
     Yₙ⁻[πₙ[1]] = Yₙ
 
-    n_var_params = length(factor_names)
+    n_var_params = length(names(X1ₙ))
     t_param_idx::Int64 = 1
     for param_idx ∈ 1:n_var_params
         # Target param index is different from param_idx.
         t_param_idx = πₙ[param_idx]
 
-        param_names_X2 = factor_names[πₙ[1:(param_idx)]]
-        param_names_X1 = factor_names[πₙ[(param_idx+1):end]]
+        Zₙ[πₙ[1:(param_idx)]] .= @view _X2[πₙ[1:(param_idx)]]
+        Zₙ[πₙ[(param_idx+1):end]] .= @view _X1[πₙ[(param_idx+1):end]]
 
-        Zₙ[param_names_X2] = X2ₙ[param_names_X2]
-        Zₙ[param_names_X1] = X1ₙ[param_names_X1]
-
-        Yₙ⁺[t_param_idx] = func(collect(Zₙ))
+        Yₙ⁺[t_param_idx] = func(Zₙ)
 
         f_diff = (Yₙ⁻[t_param_idx] - Yₙ⁺[t_param_idx])
         f_arg = (Yₙ - Yₙ⁻[t_param_idx] / 2 - Yₙ⁺[t_param_idx] / 2) * f_diff
