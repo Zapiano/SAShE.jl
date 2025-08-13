@@ -8,15 +8,15 @@ The "examples/ishigami.jl" script can be used to compare the result of this impl
 
 # Quick start
 
-Assuming a function `my_model` that  accepts a vector of factors`X`
+Assuming a function `my_model` that  accepts a vector of factors `X`
 
-```
+```julia
 my_model(X::Vector{Float64}) = X[1] + X[2]^2 + X[3]^3
 ```
 
 First create two separate sample DataFrames with the same shape:
 
-```
+```julia
 using DataFrames
 
 n_factors = 3
@@ -28,7 +28,7 @@ X2 = DataFrame(rand(n_samples, n_factors), :auto)
 
 Then create a `SAShE.Problem` instance and solve it:
 
-```
+```julia
 using SAShE
 
 sa_problem = SAShE.Problem(my_model, X1, X2)
@@ -45,7 +45,7 @@ The three objects returned are:
 
 The function `shapley_effects` returns each factor's Shapley Effect. If used with the second argument `Φ²ₙ`, it also returns the lower and upper bounds of each factor's Shapley Effect confidence interval.
 
-```
+```julia
 # Vector of Shapley Effects for each factor
 Φ = SAShE.shapley_effects(Φₙ)
 
@@ -56,7 +56,7 @@ The function `shapley_effects` returns each factor's Shapley Effect. If used wit
 
 The confidence intervals and margin of errors can also be accessed directly via:
 
-```
+```julia
 # Margin of error
 SAShE.margin_of_error(Φₙ, Φ²ₙ)
 
