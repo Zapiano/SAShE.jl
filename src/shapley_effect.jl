@@ -151,25 +151,20 @@ end
 function solve(_problem::Problem)
     n_samples = _problem.n_samples
 
-    factor_names = names(_problem.X1)
-
     res = @showprogress pmap(
         _shapley_effect_iteration,
-        fill(_problem.func, n_samples),
-        [_problem.X1[i, :] for i in 1:n_samples],
-        [_problem.X2[i, :] for i in 1:n_samples],
-        [_problem.permutations[i, :] for i in 1:n_samples],
-        _problem.Y,
-        [_problem.Y⁻[i, :] for i in 1:n_samples],
-        [_problem.Y⁺[i, :] for i in 1:n_samples],
-        [_problem.Φ_increments[i, :] for i in 1:n_samples],
-        [_problem.Φ²_increments[i, :] for i in 1:n_samples],
-        fill(factor_names, n_samples),
-        fill(_problem.n_samples, n_samples)
+        repeated(_problem.func, n_samples),
+        eachrow(_problem.X1),
+        eachrow(_problem.X2),
+        eachrow(_problem.permutations),
+        eachrow(_problem.Y⁻),
+        eachrow(_problem.Y⁺),
+        eachrow(_problem.Φ_increments),
+        eachrow(_problem.Φ²_increments),
+        repeated(_problem.n_samples, n_samples)
     )
 
     # TODO Return a better object, either a `Solution` or a new version of `Problem`
-
     return hcat([r[1] for r in res]...), hcat([r[2] for r in res]...), [r[3] for r in res]
 end
 
