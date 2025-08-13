@@ -25,8 +25,8 @@ Distributed.addprocs(5)     # replace by a reasonable number.
     du = Uniform(-π, π)
 
     # Shape n_samples ⋅ n_factors
-    samples1 = DataFrame(hcat([rand(du, n_factors) for _ in 1:n_samples]...)', factor_names)
-    samples2 = DataFrame(hcat([rand(du, n_factors) for _ in 1:n_samples]...)', factor_names)
+    samples1 = DataFrame(rand(du, n_samples, n_factors), factor_names)
+    samples2 = DataFrame(rand(du, n_samples, n_factors), factor_names)
 
     sa_problem = SAShE.Problem(ishigami, samples1, samples2)
 end
