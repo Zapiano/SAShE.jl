@@ -10,8 +10,8 @@ ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 
 [compat]
 julia = "1.11"
-DataFrames = "1.7.0"
-ProgressMeter = "1.10.4"
+DataFrames = "1.7"
+ProgressMeter = "1.10"
 
 [extras]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
