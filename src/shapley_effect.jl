@@ -118,7 +118,7 @@ function _shapley_effect_iteration(
     Yₙ = func(_X1)
     Yₙ⁻[πₙ[1]] = Yₙ
 
-    n_var_params = length(names(X1ₙ))
+    n_var_params = length(X1ₙ)
     t_param_idx::Int64 = 1
     for param_idx ∈ 1:n_var_params
         # Target param index is different from param_idx.
