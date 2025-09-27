@@ -59,7 +59,6 @@ struct Problem
             n_samples
         )
     end
-
 end
 
 function _validate_problem(X1::DataFrame, X2::DataFrame)
@@ -87,19 +86,35 @@ function confint(Φₙ::Matrix{Float64}, Φ²ₙ::Matrix{Float64})
 end
 
 """
-    shapley_effects(Φₙ, Φ²ₙ)
+    shapley_effects(Φₙ)::Vector{Float64}
+
+Estimate Shapley effects for each factor.
+
+# Arguments
+- `Φₙ` : Shapley effects for each sample (rows) and factor (cols)
+
+# Returns
+Vector of size `d` (dimensionality of the problem), containing the estimated Shapley
+effects.
+"""
+function shapley_effects(Φₙ)::Vector{Float64}
+    return dropdims(sum(Φₙ, dims=2), dims=2)
+end
+
+"""
+    shapley_effects(Φₙ, Φ²ₙ)::NTuple{3,Vector{Float64}}
 
 # Arguments
 - `Φₙ` : Shapley effects for each sample (rows) and factor (cols)
 - `Φ²ₙ` : Variance of the Shapley effects for each sample (rows) and factor (cols)
 
 # Returns
-Returns a tuple with the total Shapley effects and their respective std.
+Tuple, of vectors with same dimensionality of the problem.
+- Φ (Shapley effect)
+- Φ + stdev
+- Φ - stdev
 """
-function shapley_effects(Φₙ)::Vector{Float64}
-    return dropdims(sum(Φₙ, dims=2), dims=2)
-end
-function shapley_effects(Φₙ, Φ²ₙ)
+function shapley_effects(Φₙ, Φ²ₙ)::NTuple{3,Vector{Float64}}
     Φ = shapley_effects(Φₙ)
     moe = margin_of_error(Φₙ, Φ²ₙ)
     Φ, Φ .- moe, Φ .+ moe
@@ -148,21 +163,37 @@ function _shapley_effect_iteration(
     return (Φₙ_increments, Φₙ²_increments, Yₙ)
 end
 
-# TODO Rename `solve` to `shapley_effect` ?
-function solve(_problem::Problem)
-    n_samples = _problem.n_samples
+"""
+    solve(problem::Problem)
+
+Evaluate `Problem` with associated model and determine Shapley effect.
+
+TODO Rename `solve` to `shapley_effect` or `analyze`?
+
+# Arguments
+- `problem` : SAShE Problem
+
+# Returns
+Tuple of matrices: Φₙ, Φ²ₙ, Yₙ
+- Φₙ : Shapley effects for base samples (size `N`)
+- Φ²ₙ : Variance of Shapley effects used to estimate confidence bounds
+- Yₙ : Corresponding model result for base samples (size `N`)
+"""
+
+function solve(problem::Problem)
+    n_samples = problem.n_samples
 
     res = @showprogress pmap(
         _shapley_effect_iteration,
-        repeated(_problem.func, n_samples),
-        eachrow(_problem.X1),
-        eachrow(_problem.X2),
-        eachrow(_problem.permutations),
-        eachrow(_problem.Y⁻),
-        eachrow(_problem.Y⁺),
-        eachrow(_problem.Φ_increments),
-        eachrow(_problem.Φ²_increments),
-        repeated(_problem.n_samples, n_samples)
+        repeated(problem.func, n_samples),
+        eachrow(problem.X1),
+        eachrow(problem.X2),
+        eachrow(problem.permutations),
+        eachrow(problem.Y⁻),
+        eachrow(problem.Y⁺),
+        eachrow(problem.Φ_increments),
+        eachrow(problem.Φ²_increments),
+        repeated(problem.n_samples, n_samples)
     )
 
     # TODO Return a better object, either a `Solution` or a new version of `Problem`
