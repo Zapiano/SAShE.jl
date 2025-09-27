@@ -15,6 +15,10 @@
 - `Φ²_increments` : Contribution that each sample iteration (rows) gives to each Shapley
 Effect squared expected valued
 
+# References
+1. Goda, T., 2021. A simple algorithm for global sensitivity analysis with Shapley effects. \
+   Reliability Engineering & System Safety 213, 107702. \
+   https://doi.org/10.1016/j.ress.2021.107702
 """
 struct Problem
     func::Function
