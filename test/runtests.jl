@@ -3,7 +3,6 @@ using SAShE
 using DataFrames
 using Distributions
 using Random
-
 @testset "Ishigami function" begin
     Random.seed!(0987)
 
@@ -22,6 +21,13 @@ using Random
     sa_problem = SAShE.Problem(ishigami, samples1, samples2)
     Φₙ, Φ²ₙ, Yₙ = SAShE.solve(sa_problem)
     Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)
+
+    # Compute variance of Yₙ
+    mean_val = sum(Yₙ) / n_samples
+    squared_diffs = (Yₙ .- Ref(mean_val)) .^ 2
+    var_Y = sum(squared_diffs) / (n_samples - 1)
+    @test (sum(Φₙ) / var_Y) ≈ 1.0 atol = 1e-2
+
     Φ_confint = SAShE.confint(Φₙ, Φ²ₙ)
     Φ_moe = SAShE.margin_of_error(Φₙ, Φ²ₙ)
 
