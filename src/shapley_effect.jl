@@ -120,6 +120,79 @@ function shapley_effects(Φₙ, Φ²ₙ)::NTuple{3,Vector{Float64}}
     Φ, Φ .- moe, Φ .+ moe
 end
 
+"""
+    _shapley_effect_dependent_iteration(
+        func::Function,
+        iter_idx::Int64,
+        X1ₙ::DataFrameRow,
+        X2ₙ::DataFrameRow,
+        sample_X2::Function,
+        πₙ::AbstractVector{Int64},          # A row of the permutation matrix.
+        Yₙ⁻::AbstractVector{Float64},
+        Yₙ⁺::AbstractVector{Float64},
+        Φₙ_increments::AbstractVector{Float64},
+        Φₙ²_increments::AbstractVector{Float64},
+        n_samples::Int64,
+    )
+
+Allows the user to specify a function `sample_X2` that samples X2 conditionally with respect
+to X1 at each iteration. That's necessary when some factors are dependent.
+
+#TODO Give more details.
+
+"""
+function _shapley_effect_dependent_iteration(
+    func::Function,
+    sample_X2::Function,
+    X1ₙ::DataFrameRow,
+    X2ₙ::DataFrameRow,
+    πₙ::AbstractVector{Int64},          # A row of the permutation matrix.
+    Yₙ⁻::AbstractVector{Float64},
+    Yₙ⁺::AbstractVector{Float64},
+    Φₙ_increments::AbstractVector{Float64},
+    Φₙ²_increments::AbstractVector{Float64},
+    n_samples::Int64,
+)
+    _X1 = collect(X1ₙ)
+    _X2 = collect(X2ₙ)
+    factor_names = names(X1ₙ)
+    Zₙ = copy(_X1)
+    Yₙ = func(Zₙ)
+    Yₙ⁻[πₙ[1]] = Yₙ
+
+    n_var_params = length(X1ₙ)
+    t_param_idx::Int64 = 1
+    for param_idx ∈ 1:n_var_params
+        # Target param index is different from param_idx.
+        t_param_idx = πₙ[param_idx]
+
+        X1_param_idx = πₙ[(param_idx+1):end]
+        X2_param_idx = πₙ[1:(param_idx)]
+
+        # sample_X2 is expected to return a Vector with sampled values for factors X2_param_idx
+        Zₙ[X2_param_idx] .= sample_X2(X1_param_idx, X2_param_idx, _X1, _X2, factor_names)
+        Zₙ[X1_param_idx] .= @view _X1[X1_param_idx]
+
+        Yₙ⁺[t_param_idx] = func(Zₙ)
+
+        f_diff = (Yₙ⁻[t_param_idx] - Yₙ⁺[t_param_idx])
+        f_arg = (Yₙ - (Yₙ⁻[t_param_idx] / 2) - (Yₙ⁺[t_param_idx] / 2)) * f_diff
+
+        Φₙ_increments[t_param_idx] = f_arg * (1 / n_samples)
+        Φₙ²_increments[t_param_idx] = f_arg^2 * (1 / n_samples)
+
+        if param_idx < n_var_params
+            Yₙ⁻[πₙ[param_idx+1]] = Yₙ⁺[t_param_idx]
+        end
+    end
+    if any(isnan.(Φₙ_increments))
+        error("NaN detected in Shapley effect increments")
+    end
+
+    # TODO Maybe we could return a solution object with the below plus Φ and Φ²
+    return (Φₙ_increments, Φₙ²_increments, Yₙ)
+end
+
 function _shapley_effect_iteration(
     func::Function,
     X1ₙ::DataFrameRow,
@@ -164,7 +237,7 @@ function _shapley_effect_iteration(
 end
 
 """
-    solve(problem::Problem)
+    solve(problem::Problem; dependent::Bool=false, sample_X2::Function=nothing)
 
 Evaluate `Problem` with associated model and determine Shapley effect.
 
@@ -172,6 +245,9 @@ TODO Rename `solve` to `shapley_effect` or `analyze`?
 
 # Arguments
 - `problem` : SAShE Problem
+- `dependent` : Defaults to false. When true, use alternative algorithm for dependent factors.
+- `sample_X2` : To be used when `dependent == true`.  More details can be found in
+`_shapley_effect_dependent_iteration`'s docstring.
 
 # Returns
 Tuple of matrices: Φₙ, Φ²ₙ, Yₙ
@@ -182,18 +258,34 @@ Tuple of matrices: Φₙ, Φ²ₙ, Yₙ
 function solve(problem::Problem)
     n_samples = problem.n_samples
 
-    res = @showprogress pmap(
-        _shapley_effect_iteration,
-        repeated(problem.func, n_samples),
-        eachrow(problem.X1),
-        eachrow(problem.X2),
-        eachrow(problem.permutations),
-        eachrow(problem.Y⁻),
-        eachrow(problem.Y⁺),
-        eachrow(problem.Φ_increments),
-        eachrow(problem.Φ²_increments),
-        repeated(problem.n_samples, n_samples)
-    )
+    res = if dependent
+        @showprogress pmap(
+            _shapley_effect_dependent_iteration,
+            repeated(problem.func, n_samples),
+            repeated(sample_X2, n_samples),
+            eachrow(problem.X1),
+            eachrow(problem.X2),
+            eachrow(problem.permutations),
+            eachrow(problem.Y⁻),
+            eachrow(problem.Y⁺),
+            eachrow(problem.Φ_increments),
+            eachrow(problem.Φ²_increments),
+            repeated(problem.n_samples, n_samples)
+        )
+    else
+        @showprogress pmap(
+            _shapley_effect_iteration,
+            repeated(problem.func, n_samples),
+            eachrow(problem.X1),
+            eachrow(problem.X2),
+            eachrow(problem.permutations),
+            eachrow(problem.Y⁻),
+            eachrow(problem.Y⁺),
+            eachrow(problem.Φ_increments),
+            eachrow(problem.Φ²_increments),
+            repeated(problem.n_samples, n_samples)
+        )
+    end
 
     # TODO Return a better object, either a `Solution` or a new version of `Problem`
     return hcat([r[1] for r in res]...), hcat([r[2] for r in res]...), [r[3] for r in res]
