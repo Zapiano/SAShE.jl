@@ -260,7 +260,7 @@ function analyze(X::DataFrame, Y::Vector, perms::Matrix)
 end
 
 """
-    analyze(S::SAShESample, Y)
+    analyze(S::SAShESample, Y::Vector)
 
 # Arguments
 - `S` : SAShE sample
