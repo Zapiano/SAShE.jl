@@ -179,7 +179,6 @@ Tuple of matrices: Φₙ, Φ²ₙ, Yₙ
 - Φ²ₙ : Variance of Shapley effects used to estimate confidence bounds
 - Yₙ : Corresponding model result for base samples (size `N`)
 """
-
 function solve(problem::Problem)
     n_samples = problem.n_samples
 
@@ -198,6 +197,81 @@ function solve(problem::Problem)
 
     # TODO Return a better object, either a `Solution` or a new version of `Problem`
     return hcat([r[1] for r in res]...), hcat([r[2] for r in res]...), [r[3] for r in res]
+end
+
+"""
+    analyze(X::DataFrame, Y::Vector, perms::Matrix)
+
+# Arguments
+- `X` : Inputs used to run target model
+- `Y` : Resulting outputs from `X`
+- `perms` : Permutation order
+
+# Returns
+Tuple, of Φₙ and Φₙ² (Shapley Effect and variance)
+"""
+function analyze(X::DataFrame, Y::Vector, perms::Matrix)
+    n_var_params = size(X, 2)
+    n_base_samples = size(perms, 1)
+
+    check_size = Int64(size(X, 1) / (n_var_params + 1))
+    @assert check_size == n_base_samples "Sample sizes do not match!"
+
+    Φₙ_increments = zeros(n_base_samples, n_var_params)
+    Φₙ²_increments = zeros(n_base_samples, n_var_params)
+
+    Yₙ⁻ = zeros(n_var_params)
+    Yₙ⁺ = zeros(n_var_params)
+
+    for n in 1:n_base_samples
+        # For each sample...
+
+        # Calculate the starting index for this base sample
+        base_idx = (n - 1) * (n_var_params + 1) + 1
+
+        # Yₙ⁻ is the result for Xₙ, and gets replaced by Yₙ⁺
+        # Yₙ⁺ is the result for Xₙ₊₁
+        πₙ = perms[n, :]
+        Yₙ = Y[base_idx]
+
+        Yₙ⁻ .= 0.0
+        Yₙ⁺ .= 0.0
+        Yₙ⁻[πₙ[1]] = Yₙ  # Set first value according to permutation
+
+        for param_idx in 1:n_var_params
+            eval_idx = base_idx + param_idx
+            t_param_idx = πₙ[param_idx]
+
+            Yₙ⁺[t_param_idx] = Y[eval_idx]
+
+            f_diff = (Yₙ⁻[t_param_idx] - Yₙ⁺[t_param_idx])
+            f_arg = (Yₙ - Yₙ⁻[t_param_idx] / 2 - Yₙ⁺[t_param_idx] / 2) * f_diff
+
+            Φₙ_increments[n, t_param_idx] = f_arg * (1 / n_base_samples)
+            Φₙ²_increments[n, t_param_idx] = f_arg^2 * (1 / n_base_samples)
+
+            if param_idx < n_var_params
+                Yₙ⁻[πₙ[param_idx+1]] = Yₙ⁺[t_param_idx]
+            end
+        end
+    end
+
+    return (Matrix(Φₙ_increments'), Matrix(Φₙ²_increments'))
+end
+
+"""
+    analyze(S::SAShESample, Y::Vector)
+
+# Arguments
+- `S` : SAShE sample
+- `Y` : Model results
+
+# Returns
+Tuple, of Φₙ and Φₙ² (Shapley Effect and variance)
+"""
+function analyze(S::SAShESample, Y::Vector)
+    X = S.samples
+    return analyze(X, Y, S.permutations)
 end
 
 function Base.:show(io::IO, p::Problem)
