@@ -54,7 +54,7 @@ function _generate_samples(A::DataFrame, B::DataFrame, permutations::Matrix{Int6
 end
 function _generate_samples(A::DataFrame, B::DataFrame)
     n_samples, n_factors = size(A)
-    _permutations = collect(hcat(sortperm.(eachrow(rand(n_samples, n_factors)))...)')
+    _permutations = generate_permutations(n_samples, n_factors)
 
     return _generate_samples(A, B, _permutations)
 end
@@ -65,6 +65,10 @@ function _generate_samples(A::DataFrame, B::DataFrame, sampler)
     )
 
     return _generate_samples(A, B, permutations)
+end
+
+function generate_permutations(n_samples::Int64, n_factors::Int64)::Matrix{Int64}
+    return collect(hcat(sortperm.(eachrow(rand(n_samples, n_factors)))...)')
 end
 
 """

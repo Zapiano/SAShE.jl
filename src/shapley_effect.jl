@@ -42,7 +42,7 @@ struct Problem
         # TODO Switch rows and cols so each col is a sample to improve performance
         _Y⁻::Matrix = zeros(Float64, n_samples, n_factors)
         _Y⁺::Matrix = zeros(Float64, n_samples, n_factors)
-        _permutations = collect(hcat(sortperm.(eachrow(rand(n_samples, n_factors)))...)')
+        _permutations = generate_permutations(n_samples, n_factors)
         _Φ_increments::Matrix{Float64} = zeros(Float64, n_samples, n_factors)
         _Φ²_increments::Matrix{Float64} = zeros(Float64, n_samples, n_factors)
 
