@@ -97,7 +97,7 @@ Estimate Shapley effects for each factor.
 Vector of size `d` (dimensionality of the problem), containing the estimated Shapley
 effects.
 """
-function shapley_effects(Φₙ)::Vector{Float64}
+function shapley_effects(Φₙ::AbstractArray{Float64,2})::Vector{Float64}
     return dropdims(sum(Φₙ, dims=2), dims=2)
 end
 
@@ -114,7 +114,7 @@ Tuple, of vectors with same dimensionality of the problem.
 - Φ + stdev
 - Φ - stdev
 """
-function shapley_effects(Φₙ, Φ²ₙ)::NTuple{3,Vector{Float64}}
+function shapley_effects(Φₙ::AbstractArray{Float64,2}, Φ²ₙ::AbstractArray{Float64,2})::NTuple{3,Vector{Float64}}
     Φ = shapley_effects(Φₙ)
     moe = margin_of_error(Φₙ, Φ²ₙ)
     Φ, Φ .- moe, Φ .+ moe
