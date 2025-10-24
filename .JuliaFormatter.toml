@@ -1,0 +1,12 @@
+style="blue"
+indent=4
+margin=92
+trailing_comma=true
+for_in_replacement="∈"
+whitespace_typedefs=true
+normalize_line_endings="unix"
+align_assignment=true
+align_struct_field=true
+align_conditional=true
+align_pair_arrow=true
+align_matrix=true

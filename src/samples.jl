@@ -29,7 +29,7 @@ function _generate_samples(A::DataFrame, B::DataFrame, permutations::Matrix{Int6
     Z = zeros(n_samples * (n_factors + 1), n_factors)
 
     sample_count = 1
-    for i in 1:n_samples
+    for i ∈ 1:n_samples
         # Leave one sample as is to create N(d+1) samples
         # where N is the number of base samples, and d is the number of factors (dimensions)
         Z[sample_count, :] .= collect(A[i, :])
@@ -45,7 +45,7 @@ function _generate_samples(A::DataFrame, B::DataFrame, permutations::Matrix{Int6
             # Target param index is different from param_idx.
             # t_param_idx = πₙ[param_idx]
             Zₙ[πₙ[1:(param_idx)]] .= @view _B[πₙ[1:(param_idx)]]
-            Zₙ[πₙ[(param_idx+1):end]] .= @view _A[πₙ[(param_idx+1):end]]
+            Zₙ[πₙ[(param_idx + 1):end]] .= @view _A[πₙ[(param_idx + 1):end]]
             sample_count += 1
         end
     end
@@ -84,7 +84,7 @@ function _even_split(factor_names, X)
     B = copy(A)
 
     A[:, :] = X[1:half_size, :]
-    B[:, :] = X[(half_size+1):end, :]
+    B[:, :] = X[(half_size + 1):end, :]
 
     return A, B
 end
@@ -115,7 +115,7 @@ Tuple: Samples to be evaluated and applied permutation matrix.
 function create_sample(factor_names::Vector, n_samples::Int64, factor_dist::Vector)
     A, B = _even_split(factor_names, zeros(n_samples, n_factors))
 
-    for (i, fd) in enumerate(factor_dist)
+    for (i, fd) ∈ enumerate(factor_dist)
         A[:, i] .= rand(fd, n_samples)
         B[:, i] .= rand(fd, n_samples)
     end
@@ -182,17 +182,25 @@ struct SAShESample
     "Permutation applied to generate samples."
     permutations
 
-    function SAShESample(factor_names::Union{Vector{String},Vector{Symbol}}, n_samples::Int64, factor_dist::Vector)
+    function SAShESample(
+        factor_names::Union{Vector{String}, Vector{Symbol}},
+        n_samples::Int64,
+        factor_dist::Vector,
+    )
         X, p = create_sample(factor_names, n_samples, factor_dist)
         return new(X, p)
     end
 
-    function SAShESample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix)
+    function SAShESample(
+        factor_names::Union{Vector{String}, Vector{Symbol}}, samples::Matrix
+    )
         X, p = create_sample(factor_names, samples)
         return new(X, p)
     end
 
-    function SAShESample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix, sampler)
+    function SAShESample(
+        factor_names::Union{Vector{String}, Vector{Symbol}}, samples::Matrix, sampler
+    )
         A, B = _even_split(factor_names, samples)
         X, p = _generate_samples(A, B, sampler)
         return new(X, p)

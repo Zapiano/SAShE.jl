@@ -16,8 +16,8 @@ end
     du = Uniform(-π, π)
 
     # Shape n_samples ⋅ n_factors
-    samples1 = DataFrame(hcat([rand(du, n_factors) for _ in 1:n_samples]...)', factor_names)
-    samples2 = DataFrame(hcat([rand(du, n_factors) for _ in 1:n_samples]...)', factor_names)
+    samples1 = DataFrame(hcat([rand(du, n_factors) for _ ∈ 1:n_samples]...)', factor_names)
+    samples2 = DataFrame(hcat([rand(du, n_factors) for _ ∈ 1:n_samples]...)', factor_names)
 
     sa_problem = SAShE.Problem(ishigami, samples1, samples2)
     Φₙ, Φ²ₙ, Yₙ = SAShE.solve(sa_problem)

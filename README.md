@@ -1,6 +1,6 @@
 # SAShE.jl
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16777876.svg)](https://doi.org/10.5281/zenodo.16777876)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16777876.svg)](https://doi.org/10.5281/zenodo.16777876) [![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/JuliaDiff/BlueStyle)
 
 This package performs a Sensitivity Analysis using Shapley Effects given a model in the form of a function, referred to here as `my_model`, that accepts a vector of factors `X`. The approach implemented here was presented in [1]. If the user is using `Distributed` and has added some procs with `addprocs`, `SAShE.solve` will be run using multiple cores.
 
@@ -63,6 +63,10 @@ SAShE.margin_of_error(Φₙ, Φ²ₙ)
 # Confidence interval
 SAShE.confint(Φₙ, Φ²ₙ)
 ```
+
+# Contributing
+
+This project uses [BlueStyle](https://domluna.github.io/JuliaFormatter.jl/dev/blue_style/) style guide with some extra configuration. If you use VSCode, you don't need to install any extensions, the `.JuliaFormatter.toml` will be automatically be used to format the files.
 
 # Reference
 

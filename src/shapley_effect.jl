@@ -1,4 +1,3 @@
-
 """
     problem (X1::DataFrame, X2::DataFrame, Y::Vector, Y⁻::Matrix, Y⁺::Matrix)
     problem (X1::DataFrame, X2::DataFrame)
@@ -56,7 +55,7 @@ struct Problem
             _permutations,
             _Φ_increments,
             _Φ²_increments,
-            n_samples
+            n_samples,
         )
     end
 end
@@ -73,16 +72,14 @@ end
 function margin_of_error(Φₙ::Matrix{Float64}, Φ²ₙ::Matrix{Float64})::Vector{Float64}
     n_samples = size(Φₙ, 2)
     # E[Φ²] == sum(Φ²ₙ, dims=2) and (E[Φ])² == (sum(Φₙ, dims=2)).^2
-    stds = sqrt.(
-        (shapley_effects(Φ²ₙ) .- (shapley_effects(Φₙ) .^ 2)) ./ (n_samples - 1)
-    )
+    stds = sqrt.((shapley_effects(Φ²ₙ) .- (shapley_effects(Φₙ) .^ 2)) ./ (n_samples - 1))
     return 1.96 .* stds
 end
 
 function confint(Φₙ::Matrix{Float64}, Φ²ₙ::Matrix{Float64})
     Φ = shapley_effects(Φₙ)
     moe = margin_of_error(Φₙ, Φ²ₙ)
-    Φ .- moe, Φ .+ moe
+    return Φ .- moe, Φ .+ moe
 end
 
 """
@@ -97,8 +94,8 @@ Estimate Shapley effects for each factor.
 Vector of size `d` (dimensionality of the problem), containing the estimated Shapley
 effects.
 """
-function shapley_effects(Φₙ::AbstractArray{Float64,2})::Vector{Float64}
-    return dropdims(sum(Φₙ, dims=2), dims=2)
+function shapley_effects(Φₙ::AbstractArray{Float64, 2})::Vector{Float64}
+    return dropdims(sum(Φₙ; dims=2); dims=2)
 end
 
 """
@@ -114,10 +111,12 @@ Tuple, of vectors with same dimensionality of the problem.
 - Φ + stdev
 - Φ - stdev
 """
-function shapley_effects(Φₙ::AbstractArray{Float64,2}, Φ²ₙ::AbstractArray{Float64,2})::NTuple{3,Vector{Float64}}
+function shapley_effects(
+    Φₙ::AbstractArray{Float64, 2}, Φ²ₙ::AbstractArray{Float64, 2}
+)::NTuple{3, Vector{Float64}}
     Φ = shapley_effects(Φₙ)
     moe = margin_of_error(Φₙ, Φ²ₙ)
-    Φ, Φ .- moe, Φ .+ moe
+    return Φ, Φ .- moe, Φ .+ moe
 end
 
 function _shapley_effect_iteration(
@@ -144,7 +143,7 @@ function _shapley_effect_iteration(
         t_param_idx = πₙ[param_idx]
 
         Zₙ[πₙ[1:(param_idx)]] .= @view _X2[πₙ[1:(param_idx)]]
-        Zₙ[πₙ[(param_idx+1):end]] .= @view _X1[πₙ[(param_idx+1):end]]
+        Zₙ[πₙ[(param_idx + 1):end]] .= @view _X1[πₙ[(param_idx + 1):end]]
 
         Yₙ⁺[t_param_idx] = func(Zₙ)
 
@@ -155,7 +154,7 @@ function _shapley_effect_iteration(
         Φₙ²_increments[t_param_idx] = f_arg^2 * (1 / n_samples)
 
         if param_idx < n_var_params
-            Yₙ⁻[πₙ[param_idx+1]] = Yₙ⁺[t_param_idx]
+            Yₙ⁻[πₙ[param_idx + 1]] = Yₙ⁺[t_param_idx]
         end
     end
 
@@ -192,11 +191,11 @@ function solve(problem::Problem)
         eachrow(problem.Y⁺),
         eachrow(problem.Φ_increments),
         eachrow(problem.Φ²_increments),
-        repeated(problem.n_samples, n_samples)
+        repeated(problem.n_samples, n_samples),
     )
 
     # TODO Return a better object, either a `Solution` or a new version of `Problem`
-    return hcat([r[1] for r in res]...), hcat([r[2] for r in res]...), [r[3] for r in res]
+    return hcat([r[1] for r ∈ res]...), hcat([r[2] for r ∈ res]...), [r[3] for r ∈ res]
 end
 
 """
@@ -223,7 +222,7 @@ function analyze(X::DataFrame, Y::Vector, perms::Matrix)
     Yₙ⁻ = zeros(n_var_params)
     Yₙ⁺ = zeros(n_var_params)
 
-    for n in 1:n_base_samples
+    for n ∈ 1:n_base_samples
         # For each sample...
 
         # Calculate the starting index for this base sample
@@ -238,7 +237,7 @@ function analyze(X::DataFrame, Y::Vector, perms::Matrix)
         Yₙ⁺ .= 0.0
         Yₙ⁻[πₙ[1]] = Yₙ  # Set first value according to permutation
 
-        for param_idx in 1:n_var_params
+        for param_idx ∈ 1:n_var_params
             eval_idx = base_idx + param_idx
             t_param_idx = πₙ[param_idx]
 
@@ -251,7 +250,7 @@ function analyze(X::DataFrame, Y::Vector, perms::Matrix)
             Φₙ²_increments[n, t_param_idx] = f_arg^2 * (1 / n_base_samples)
 
             if param_idx < n_var_params
-                Yₙ⁻[πₙ[param_idx+1]] = Yₙ⁺[t_param_idx]
+                Yₙ⁻[πₙ[param_idx + 1]] = Yₙ⁺[t_param_idx]
             end
         end
     end
@@ -276,5 +275,5 @@ end
 
 function Base.:show(io::IO, p::Problem)
     println(p.func)
-    println("n_samples: ", p.n_samples)
+    return println("n_samples: ", p.n_samples)
 end
