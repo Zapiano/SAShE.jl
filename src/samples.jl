@@ -22,7 +22,7 @@ Supports sample generation with and without a pre-determined permutation matrix.
 Tuple: Samples to be evaluated and applied permutation matrix.
 """
 function _generate_samples(A::DataFrame, B::DataFrame, permutations::Matrix{Int64})
-    SAShE._validate_problem(A, B)
+    SAShE._validate_sashe_model(A, B)
     n_samples, n_factors = size(A)
 
     # Initialize generated sample
@@ -182,6 +182,10 @@ struct SAShESample
     "Permutation applied to generate samples."
     permutations
 
+    function SAShESample(problem::SAShEModel)
+        X, p = _generate_samples(problem.X1, problem.X2, problem.permutations)
+        return new(X, p)
+    end
     function SAShESample(
         factor_names::Union{Vector{String}, Vector{Symbol}},
         n_samples::Int64,
