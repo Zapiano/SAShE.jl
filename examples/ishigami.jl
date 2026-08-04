@@ -28,7 +28,7 @@ Distributed.addprocs(5)     # replace by a reasonable number.
     samples1 = DataFrame(rand(du, n_samples, n_factors), factor_names)
     samples2 = DataFrame(rand(du, n_samples, n_factors), factor_names)
 
-    sa_problem = SAShE.Problem(ishigami, samples1, samples2)
+    sa_problem = SAShE.SAShEModel(ishigami, samples1, samples2)
 end
 
 Φₙ, Φ²ₙ, Yₙ = SAShE.analyze(sa_problem)
