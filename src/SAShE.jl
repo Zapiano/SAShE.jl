@@ -5,10 +5,11 @@ using DataFrames, Distributed, ProgressMeter
 
 using DocStringExtensions
 
+include("model.jl")
 include("samples.jl")
 include("shapley_effect.jl")
 
-export problem, SAShESample
-export solve, analyze
+export SAShEModel, SAShESample
+export analyze
 
 end

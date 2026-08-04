@@ -1,74 +1,3 @@
-"""
-    problem (X1::DataFrame, X2::DataFrame, Y::Vector, Y⁻::Matrix, Y⁺::Matrix)
-    problem (X1::DataFrame, X2::DataFrame)
-
-# Arguments
-- `func` : A function that accepts a vector of inputs as argument
-- `X1` : First set of samples (of the same size as X2) to be used as inputs to func
-- `X2` : Second set of samples (of the same size as X1) to be used as inputs to func
-- `Y:` : Value of the model calculated for each sample row of X1 (initialized empty)
-- `Y⁻` : Matrix of intermediate model values for each pair sample/factor (initialized empty)
-- `Y⁺` : Matrix of intermediate model values for each pair sample/factor (initialized empty)
-- `Φ_increments` : Contribution that each sample iteration (rows) gives to each factor
-(cols) total ShapleyEffect
-- `Φ²_increments` : Contribution that each sample iteration (rows) gives to each Shapley
-Effect squared expected valued
-
-# References
-1. Goda, T., 2021. A simple algorithm for global sensitivity analysis with Shapley effects. \
-   Reliability Engineering & System Safety 213, 107702. \
-   https://doi.org/10.1016/j.ress.2021.107702
-"""
-struct Problem
-    func::Function
-    X1::DataFrame                       # What the paper calls x
-    X2::DataFrame                       # What the paper calls y
-    Y::Vector                           # What the paper calls F
-    Y⁻::Matrix                          # What the paper calls F⁻
-    Y⁺::Matrix                          # What the paper calls F⁺
-    permutations::Matrix                # What the paper calls π
-    Φ_increments::Matrix{Float64}
-    Φ²_increments::Matrix{Float64}
-    n_samples::Int64
-
-    # TODO Rename Problem to Model?
-    function Problem(func::Function, X1::DataFrame, X2::DataFrame)
-        # Validate inputs
-        _validate_problem(X1, X2)
-
-        n_samples, n_factors = size(X1)
-        _Y::Vector = zeros(Float64, n_samples)
-        # TODO Switch rows and cols so each col is a sample to improve performance
-        _Y⁻::Matrix = zeros(Float64, n_samples, n_factors)
-        _Y⁺::Matrix = zeros(Float64, n_samples, n_factors)
-        _permutations = generate_permutations(n_samples, n_factors)
-        _Φ_increments::Matrix{Float64} = zeros(Float64, n_samples, n_factors)
-        _Φ²_increments::Matrix{Float64} = zeros(Float64, n_samples, n_factors)
-
-        return new(
-            func,
-            X1,
-            X2,
-            _Y,
-            _Y⁻,
-            _Y⁺,
-            _permutations,
-            _Φ_increments,
-            _Φ²_increments,
-            n_samples,
-        )
-    end
-end
-
-function _validate_problem(X1::DataFrame, X2::DataFrame)
-    size_error_msg = "`samples_X1` and `samples_X2` must have the same size"
-    factor_names_error_msg = "`samples_X1` and `samples_X2` must have the same factors"
-    errors::Vector{String} = []
-    (size(X1) == size(X2)) || push!(errors, size_error_msg)
-    names(X1) == names(X2) || push!(errors, factor_names_error_msg)
-    return !isempty(errors) ? error(join(errors, "\n")) : nothing
-end
-
 function margin_of_error(Φₙ::Matrix{Float64}, Φ²ₙ::Matrix{Float64})::Vector{Float64}
     n_samples = size(Φₙ, 2)
     # E[Φ²] == sum(Φ²ₙ, dims=2) and (E[Φ])² == (sum(Φₙ, dims=2)).^2
@@ -163,52 +92,59 @@ function _shapley_effect_iteration(
 end
 
 """
-    solve(problem::Problem)
 
-Evaluate `Problem` with associated model and determine Shapley effect.
 
-TODO Rename `solve` to `shapley_effect` or `analyze`?
+
+TODO Rename `analyze` to `shapley_effect` or `analyze`?
 
 # Arguments
-- `problem` : SAShE Problem
 
 # Returns
-Tuple of matrices: Φₙ, Φ²ₙ, Yₙ
-- Φₙ : Shapley effects for base samples (size `N`)
-- Φ²ₙ : Variance of Shapley effects used to estimate confidence bounds
-- Yₙ : Corresponding model result for base samples (size `N`)
-"""
-function solve(problem::Problem)
-    n_samples = problem.n_samples
-
-    res = @showprogress pmap(
-        _shapley_effect_iteration,
-        repeated(problem.func, n_samples),
-        eachrow(problem.X1),
-        eachrow(problem.X2),
-        eachrow(problem.permutations),
-        eachrow(problem.Y⁻),
-        eachrow(problem.Y⁺),
-        eachrow(problem.Φ_increments),
-        eachrow(problem.Φ²_increments),
-        repeated(problem.n_samples, n_samples),
-    )
-
-    # TODO Return a better object, either a `Solution` or a new version of `Problem`
-    return hcat([r[1] for r ∈ res]...), hcat([r[2] for r ∈ res]...), [r[3] for r ∈ res]
-end
 
 """
+
+"""
+    analyze(s_model::SAShEModel)
     analyze(X::DataFrame, Y::Vector, perms::Matrix)
+    analyze(S::SAShESample, Y::Vector)
 
 # Arguments
-- `X` : Inputs used to run target model
+- `s_model` : SAShE SAShEModel
+- `S` : SAShE sample
 - `Y` : Resulting outputs from `X`
+- `X` : Inputs used to run target model
 - `perms` : Permutation order
 
 # Returns
-Tuple, of Φₙ and Φₙ² (Shapley Effect and variance)
+Tuple, of Φₙ and Φₙ² (Shapley Effect and variance) or tuple of matrices Φₙ, Φ²ₙ, Yₙ, with:
+
+    - Φₙ : Shapley effects for base samples (size `N`)
+    - Φ²ₙ : Variance of Shapley effects used to estimate confidence bounds
+    - Yₙ : Model run results the parameters `s_model.X1`
 """
+function analyze(s_model::SAShEModel)
+    n_samples = s_model.n_samples
+
+    res = @showprogress pmap(
+        _shapley_effect_iteration,
+        repeated(s_model.func, n_samples),
+        eachrow(s_model.X1),
+        eachrow(s_model.X2),
+        eachrow(s_model.permutations),
+        eachrow(s_model.Y⁻),
+        eachrow(s_model.Y⁺),
+        eachrow(s_model.Φ_increments),
+        eachrow(s_model.Φ²_increments),
+        repeated(s_model.n_samples, n_samples),
+    )
+
+    # TODO Return a better object, either a `Solution` or a new version of `SAShEModel`
+    return hcat([r[1] for r ∈ res]...), hcat([r[2] for r ∈ res]...), [r[3] for r ∈ res]
+end
+function analyze(S::SAShESample, Y::Vector)
+    X = S.samples
+    return analyze(X, Y, S.permutations)
+end
 function analyze(X::DataFrame, Y::Vector, perms::Matrix)
     n_var_params = size(X, 2)
     n_base_samples = size(perms, 1)
@@ -256,24 +192,4 @@ function analyze(X::DataFrame, Y::Vector, perms::Matrix)
     end
 
     return (Matrix(Φₙ_increments'), Matrix(Φₙ²_increments'))
-end
-
-"""
-    analyze(S::SAShESample, Y::Vector)
-
-# Arguments
-- `S` : SAShE sample
-- `Y` : Model results
-
-# Returns
-Tuple, of Φₙ and Φₙ² (Shapley Effect and variance)
-"""
-function analyze(S::SAShESample, Y::Vector)
-    X = S.samples
-    return analyze(X, Y, S.permutations)
-end
-
-function Base.:show(io::IO, p::Problem)
-    println(p.func)
-    return println("n_samples: ", p.n_samples)
 end

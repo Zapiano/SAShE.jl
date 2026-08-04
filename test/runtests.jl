@@ -19,8 +19,8 @@ end
     samples1 = DataFrame(hcat([rand(du, n_factors) for _ ∈ 1:n_samples]...)', factor_names)
     samples2 = DataFrame(hcat([rand(du, n_factors) for _ ∈ 1:n_samples]...)', factor_names)
 
-    sa_problem = SAShE.Problem(ishigami, samples1, samples2)
-    Φₙ, Φ²ₙ, Yₙ = SAShE.solve(sa_problem)
+    sa_problem = SAShE.SAShEModel(ishigami, samples1, samples2)
+    Φₙ, Φ²ₙ, Yₙ = SAShE.analyze(sa_problem)
     Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)
     Φ_confint = SAShE.confint(Φₙ, Φ²ₙ)
     Φ_moe = SAShE.margin_of_error(Φₙ, Φ²ₙ)
@@ -46,9 +46,9 @@ end
     samples1 = DataFrame(rand(du, n_samples, n_factors), factor_names)
     samples2 = DataFrame(rand(du, n_samples, n_factors), factor_names)
 
-    sa_problem = SAShE.Problem(ishigami, samples1, samples2)
+    sa_problem = SAShE.SAShEModel(ishigami, samples1, samples2)
 
-    Φₙ, Φ²ₙ, Yₙ = SAShE.solve(sa_problem)
+    Φₙ, Φ²ₙ, Yₙ = SAShE.analyze(sa_problem)
     Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)
 
     Φ_confint = SAShE.confint(Φₙ, Φ²ₙ)
@@ -57,7 +57,8 @@ end
     # Compare model variance with sum of Shapley Effects
     @test min(var(Yₙ), sum(Φ)) / max(var(Yₙ), sum(Φ)) > 0.95 || "Ishigami did not converge"
 
-    S_x = SAShESample(samples1, samples2, sa_problem.permutations)
+    # S_x = SAShESample(samples1, samples2, sa_problem.permutations)
+    S_x = SAShESample(sa_problem)
     Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
     Φₙ, Φ²ₙ = SAShE.analyze(S_x, Y)
     Φ2, Φlb2, Φub2 = SAShE.shapley_effects(Φₙ, Φ²ₙ)
