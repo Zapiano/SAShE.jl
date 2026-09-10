@@ -92,21 +92,15 @@ function _shapley_effect_iteration(
 end
 
 """
-
-
-
-TODO Rename `analyze` to `shapley_effect` or `analyze`?
-
-# Arguments
-
-# Returns
-
-"""
-
-"""
     analyze(s_model::SAShEModel)
     analyze(X::DataFrame, Y::Vector, perms::Matrix)
     analyze(S::SAShESample, Y::Vector)
+
+TODO Rename `analyze` to `shapley_effect`?
+
+Dependent factors are handled at sampling time: build the samples with
+`SAShESample(X1, X2; conditional_sampler=...)`, run the model over `S.samples`, then call
+`analyze(S, Y)`.
 
 # Arguments
 - `s_model` : SAShE SAShEModel
@@ -158,9 +152,8 @@ function analyze(X::DataFrame, Y::Vector, perms::Matrix)
     Yₙ⁻ = zeros(n_var_params)
     Yₙ⁺ = zeros(n_var_params)
 
+    # For each sample...
     for n ∈ 1:n_base_samples
-        # For each sample...
-
         # Calculate the starting index for this base sample
         base_idx = (n - 1) * (n_var_params + 1) + 1
 

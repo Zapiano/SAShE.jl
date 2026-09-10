@@ -72,6 +72,55 @@ function generate_permutations(n_samples::Int64, n_factors::Int64)::Matrix{Int64
 end
 
 """
+    _conditionally_resample!(Z, A, B, permutations, conditional_sampler)
+
+Overwrite the resampled-factor columns of every non-base row of a generated sample `Z`
+(as returned by [`_generate_samples`](@ref)) with draws from `conditional_sampler`.
+
+Needed when some factors are statistically dependent: the pick-freeze construction in
+`_generate_samples` assumes `(xᵤ, y₋ᵤ)` is a valid draw from the joint distribution, which
+only holds under independence.
+
+`conditional_sampler(X1_param_idx, X2_param_idx, base_row, noise_row)` must return the
+values for the factors in `X2_param_idx`, in that order, drawn conditional on the factors
+in `X1_param_idx` being fixed at their `base_row` (i.e. `A`) values. `noise_row` (from `B`)
+carries an independent draw usable as a randomness source.
+
+The per-row resamples are independent and are dispatched with `pmap`.
+"""
+function _conditionally_resample!(
+    Z::DataFrame,
+    A::DataFrame,
+    B::DataFrame,
+    permutations::Matrix{Int64},
+    conditional_sampler,
+)
+    n_samples, n_factors = size(A)
+    block_size = n_factors + 1
+
+    tasks = map(1:(n_samples * n_factors)) do k
+        i = div(k - 1, n_factors) + 1        # base sample
+        pos = mod(k - 1, n_factors) + 1      # position within the pick-freeze block
+        πₙ = permutations[i, :]
+        target_row = (i - 1) * block_size + 1 + pos
+        (target_row, πₙ[1:pos], πₙ[(pos + 1):end], collect(A[i, :]), collect(B[i, :]))
+    end
+
+    results = pmap(tasks) do (target_row, X2_param_idx, X1_param_idx, base_row, noise_row)
+        values = conditional_sampler(X1_param_idx, X2_param_idx, base_row, noise_row)
+        (target_row, X2_param_idx, values)
+    end
+
+    for (target_row, X2_param_idx, values) ∈ results
+        for (col, value) ∈ zip(X2_param_idx, values)
+            Z[target_row, col] = value
+        end
+    end
+
+    return Z
+end
+
+"""
     _even_split(factor_names, X)
 
 Split a given sample set `X` into two equally sized DataFrames.
@@ -132,9 +181,14 @@ end
     SAShESample(factor_names::Union{Vector{String},Vector{Symbol}}, n_samples::Int64, factor_dist::Vector)
     SAShESample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix)
     SAShESample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix, sampler)
-    SAShESample(A::DataFrame, B::DataFrame, permutations::Matrix{Int64})
+    SAShESample(A::DataFrame, B::DataFrame; conditional_sampler=nothing)
+    SAShESample(A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing)
 
 SAShE samples (`X`) and permutations (`π`).
+
+Pass `conditional_sampler` when some factors are dependent: after the pick-freeze samples
+are built, every non-base row has its resampled factors redrawn conditional on the frozen
+ones. See [`_conditionally_resample!`](@ref) for the expected signature.
 
 # Examples
 ```julia
@@ -169,6 +223,11 @@ Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
 # With a given sampler to create custom permutations
 X = Matrix(QMC.sample(2048, fill(-π, 3), fill(Float64(π), 3), Uniform())')
 S_x = SAShESample([:x1, :x2, :x3], X, QMC.LatinHypercubeSample())
+Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
+Φₙ, Φ²ₙ = analyze(S_x, Y)
+
+# With dependent factors: redraw resampled factors conditional on the frozen ones
+S_x = SAShESample(A, B; conditional_sampler=my_conditional_sampler)
 Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
 Φₙ, Φ²ₙ = analyze(S_x, Y)
 ```
@@ -210,8 +269,18 @@ struct SAShESample
         return new(X, p)
     end
 
-    function SAShESample(A::DataFrame, B::DataFrame, permutations::Matrix{Int64})
+    function SAShESample(A::DataFrame, B::DataFrame; conditional_sampler=nothing)
+        permutations = generate_permutations(size(A)...)
+        return SAShESample(A, B, permutations; conditional_sampler=conditional_sampler)
+    end
+
+    function SAShESample(
+        A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing
+    )
         X, p = _generate_samples(A, B, permutations)
+        if !isnothing(conditional_sampler)
+            _conditionally_resample!(X, A, B, permutations, conditional_sampler)
+        end
         return new(X, p)
     end
 end
