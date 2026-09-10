@@ -11,5 +11,6 @@ include("shapley_effect.jl")
 
 export SAShEModel, SAShESample
 export analyze
+export generate_permutations
 
 end
