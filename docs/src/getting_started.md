@@ -22,7 +22,8 @@ nothing # hide
 ## 2. Draw two sample sets
 
 SAShE needs **two** independent sample sets of the same shape, `X1` and `X2` (called `x`
-and `y` in the paper). Each row is one draw of all factors; each column is a factor.
+and `y` in [4] — see [References](@ref)). Each row is one draw of all factors; each column
+is a factor.
 
 ```@example gs
 d = Uniform(-π, π)

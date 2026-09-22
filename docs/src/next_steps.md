@@ -40,8 +40,8 @@ table:
   ending in the `conditional_sampling` function from `test/conditional.jl`.
 - **The two equivalent workflows** (build `Z` yourself vs. pass `conditional_sampler`),
   with the exact-equivalence test as evidence.
-- **Caveat** from Goda §5.2: independent conditional draws at each permutation step can
-  inflate the confidence intervals.
+- **Caveat** from [4] §5.2 (see [References](@ref)): independent conditional draws at each
+  permutation step can inflate the confidence intervals.
 - **Pointer**: for correlated-but-not-deterministic inputs, the general recipe is marginal
   distributions + a copula. Not built in.
 

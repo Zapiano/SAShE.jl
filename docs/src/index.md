@@ -8,9 +8,9 @@ total output variance**. Each one therefore reads directly as "this fraction of 
 output's variance is attributable to this factor", which makes them easy to compare and to
 communicate.
 
-SAShE.jl implements the simple Monte Carlo estimator of Goda (2021): it estimates every
-factor's Shapley effect simultaneously at a cost of `N·(d + 1)` model evaluations (`N`
-samples, `d` factors), together with unbiased confidence intervals.
+SAShE.jl implements the simple Monte Carlo estimator of [4] — see [References](@ref) — it
+estimates every factor's Shapley effect simultaneously at a cost of `N·(d + 1)` model
+evaluations (`N` samples, `d` factors), together with unbiased confidence intervals.
 
 ## Installation
 
@@ -55,8 +55,4 @@ addprocs(4)
 @everywhere using SAShE
 ```
 
-## Reference
-
-Goda, T. (2021). *A simple algorithm for global sensitivity analysis with Shapley
-effects.* Reliability Engineering & System Safety, 213, 107702.
-[doi:10.1016/j.ress.2021.107702](https://doi.org/10.1016/j.ress.2021.107702)
+See the [References](@ref) page for full citations.

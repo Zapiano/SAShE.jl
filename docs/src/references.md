@@ -11,4 +11,7 @@ Numbered so that `[1]`, `[2]`, etc. mean the same paper everywhere in this packa
 3. Sobol, I. M., & Levitan, Y. L. (1999). On the use of variance reducing multipliers in
    Monte Carlo computations of a global sensitivity index. *Computer Physics
    Communications*, 117(1–2), 52–61. — source of the closed-form ANOVA decomposition of
-   the Ishigami test function used in `sandbox/nn_vs_goda_ishigami/`.
+   the Ishigami test function used in `sandbox/nearest_neighbour_vs_goda_ishigami/`.
+4. Goda, T. (2021). A simple algorithm for global sensitivity analysis with Shapley
+   effects. *Reliability Engineering & System Safety*, 213, 107702.
+   [https://doi.org/10.1016/j.ress.2021.107702](https://doi.org/10.1016/j.ress.2021.107702)

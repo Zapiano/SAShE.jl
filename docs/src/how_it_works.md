@@ -17,9 +17,10 @@ Estimating this by Monte Carlo needs, for many random subsets `u` of the factors
 - `f(x_{u+j}, y₋₍ᵤ₊ⱼ₎)` — the same, but with `j` now also held
 
 The change the extra held factor makes, suitably weighted and averaged, is the estimator.
-Goda's contribution is to walk a **random permutation** of the factors and move them one
-at a time from the resampled set to the held set: a single pass yields the term for every
-factor at once, at `d + 1` model evaluations per sample instead of `3d`.
+Goda's contribution ([4], see [References](@ref)) is to walk a **random permutation** of
+the factors and move them one at a time from the resampled set to the held set: a single
+pass yields the term for every factor at once, at `d + 1` model evaluations per sample
+instead of `3d`.
 
 ## Permutations
 
