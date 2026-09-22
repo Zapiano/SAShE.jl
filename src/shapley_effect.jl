@@ -92,18 +92,18 @@ function _shapley_effect_iteration(
 end
 
 """
-    analyze(s_model::SAShEModel)
+    analyze(s_model::CallableModel)
     analyze(X::DataFrame, Y::Vector, perms::Matrix)
-    analyze(S::SAShESample, Y::Vector)
+    analyze(S::CallableModelSample, Y::Vector)
 
 TODO Rename `analyze` to `shapley_effect`?
 
 Dependent factors are handled at sampling time: build the samples with
-`SAShESample(X1, X2; conditional_sampler=...)`, run the model over `S.samples`, then call
+`CallableModelSample(X1, X2; conditional_sampler=...)`, run the model over `S.samples`, then call
 `analyze(S, Y)`.
 
 # Arguments
-- `s_model` : SAShE SAShEModel
+- `s_model` : SAShE CallableModel
 - `S` : SAShE sample
 - `Y` : Resulting outputs from `X`
 - `X` : Inputs used to run target model
@@ -116,7 +116,7 @@ Tuple, of Φₙ and Φₙ² (Shapley Effect and variance) or tuple of matrices �
     - Φ²ₙ : Variance of Shapley effects used to estimate confidence bounds
     - Yₙ : Model run results the parameters `s_model.X1`
 """
-function analyze(s_model::SAShEModel)
+function analyze(s_model::CallableModel)
     n_samples = s_model.n_samples
 
     res = @showprogress pmap(
@@ -132,10 +132,10 @@ function analyze(s_model::SAShEModel)
         repeated(s_model.n_samples, n_samples),
     )
 
-    # TODO Return a better object, either a `Solution` or a new version of `SAShEModel`
+    # TODO Return a better object, either a `Solution` or a new version of `CallableModel`
     return hcat([r[1] for r ∈ res]...), hcat([r[2] for r ∈ res]...), [r[3] for r ∈ res]
 end
-function analyze(S::SAShESample, Y::Vector)
+function analyze(S::CallableModelSample, Y::Vector)
     X = S.samples
     return analyze(X, Y, S.permutations)
 end

@@ -17,7 +17,7 @@ Effect squared expected valued
 Implements the pick-and-freeze estimator of [4]. See the [References](@ref) page for the
 full citation.
 """
-struct SAShEModel
+struct CallableModel
     func::Function
     X1::DataFrame                       # What [4] calls x
     X2::DataFrame                       # What [4] calls y
@@ -29,10 +29,9 @@ struct SAShEModel
     Φ²_increments::Matrix{Float64}
     n_samples::Int64
 
-    # TODO Rename SAShEModel to Model?
-    function SAShEModel(func::Function, X1::DataFrame, X2::DataFrame)
+    function CallableModel(func::Function, X1::DataFrame, X2::DataFrame)
         # Validate inputs
-        _validate_sashe_model(X1, X2)
+        _validate_callable_model(X1, X2)
 
         n_samples, n_factors = size(X1)
         _Y::Vector = zeros(Float64, n_samples)
@@ -58,7 +57,7 @@ struct SAShEModel
     end
 end
 
-function _validate_sashe_model(X1::DataFrame, X2::DataFrame)
+function _validate_callable_model(X1::DataFrame, X2::DataFrame)
     size_error_msg = "`samples_X1` and `samples_X2` must have the same size"
     factor_names_error_msg = "`samples_X1` and `samples_X2` must have the same factors"
     errors::Vector{String} = []
@@ -67,7 +66,7 @@ function _validate_sashe_model(X1::DataFrame, X2::DataFrame)
     return !isempty(errors) ? error(join(errors, "\n")) : nothing
 end
 
-function Base.:show(io::IO, p::SAShEModel)
+function Base.:show(io::IO, p::CallableModel)
     println(p.func)
     return println("n_samples: ", p.n_samples)
 end

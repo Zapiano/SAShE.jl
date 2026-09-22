@@ -42,11 +42,11 @@ end
     permutations = SAShE.generate_permutations(n_samples, n_factors)
 
     # Way 1 - the package builds Z and conditions it via the kwarg.
-    S_auto = SAShESample(A, B, permutations; conditional_sampler=conditional_sampling)
+    S_auto = CallableModelSample(A, B, permutations; conditional_sampler=conditional_sampling)
 
     # Way 2 - user builds the plain pick-freeze sample (no kwarg), then conditions every
     # non-base row by hand (the workflow a user drives themselves, public API only).
-    S_manual = SAShESample(A, B, permutations)
+    S_manual = CallableModelSample(A, B, permutations)
     block_size = n_factors + 1
     for i ∈ 1:n_samples, pos ∈ 1:n_factors
         πₙ = permutations[i, :]

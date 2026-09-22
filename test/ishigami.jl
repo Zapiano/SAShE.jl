@@ -14,7 +14,7 @@ end
     samples1 = DataFrame(hcat([rand(du, n_factors) for _ ∈ 1:n_samples]...)', factor_names)
     samples2 = DataFrame(hcat([rand(du, n_factors) for _ ∈ 1:n_samples]...)', factor_names)
 
-    sa_problem = SAShE.SAShEModel(ishigami, samples1, samples2)
+    sa_problem = SAShE.CallableModel(ishigami, samples1, samples2)
     Φₙ, Φ²ₙ, Yₙ = SAShE.analyze(sa_problem)
     Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)
     Φ_confint = SAShE.confint(Φₙ, Φ²ₙ)
@@ -31,7 +31,7 @@ end
 end
 
 
-@testset "Correctness of SAShESample assessment" begin
+@testset "Correctness of CallableModelSample assessment" begin
     factor_names = [:x1, :x2, :x3]
     n_samples = 1024
     n_factors = length(factor_names)
@@ -42,7 +42,7 @@ end
     samples1 = DataFrame(rand(du, n_samples, n_factors), factor_names)
     samples2 = DataFrame(rand(du, n_samples, n_factors), factor_names)
 
-    sa_problem = SAShE.SAShEModel(ishigami, samples1, samples2)
+    sa_problem = SAShE.CallableModel(ishigami, samples1, samples2)
 
     Φₙ, Φ²ₙ, Yₙ = SAShE.analyze(sa_problem)
     Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)
@@ -53,8 +53,8 @@ end
     # Compare model variance with sum of Shapley Effects
     @test min(var(Yₙ), sum(Φ)) / max(var(Yₙ), sum(Φ)) > 0.95 || "Ishigami did not converge"
 
-    # S_x = SAShESample(samples1, samples2, sa_problem.permutations)
-    S_x = SAShESample(sa_problem)
+    # S_x = CallableModelSample(samples1, samples2, sa_problem.permutations)
+    S_x = CallableModelSample(sa_problem)
     Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
     Φₙ, Φ²ₙ = SAShE.analyze(S_x, Y)
     Φ2, Φlb2, Φub2 = SAShE.shapley_effects(Φₙ, Φ²ₙ)

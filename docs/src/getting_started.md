@@ -68,7 +68,7 @@ one is a function of the others), the sampling needs an extra step — see [Next
 ## 3. Run the analysis
 
 ```@example gs
-model = SAShEModel(ishigami, X1, X2)
+model = CallableModel(ishigami, X1, X2)
 Φₙ, Φ²ₙ, Yₙ = analyze(model)
 nothing # hide
 ```

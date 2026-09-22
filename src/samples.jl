@@ -22,7 +22,7 @@ Supports sample generation with and without a pre-determined permutation matrix.
 Tuple: Samples to be evaluated and applied permutation matrix.
 """
 function _generate_samples(A::DataFrame, B::DataFrame, permutations::Matrix{Int64})
-    SAShE._validate_sashe_model(A, B)
+    SAShE._validate_callable_model(A, B)
     n_samples, n_factors = size(A)
 
     # Initialize generated sample
@@ -178,11 +178,11 @@ function create_sample(factor_names::Vector, X::Matrix)
 end
 
 """
-    SAShESample(factor_names::Union{Vector{String},Vector{Symbol}}, n_samples::Int64, factor_dist::Vector)
-    SAShESample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix)
-    SAShESample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix, sampler)
-    SAShESample(A::DataFrame, B::DataFrame; conditional_sampler=nothing)
-    SAShESample(A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing)
+    CallableModelSample(factor_names::Union{Vector{String},Vector{Symbol}}, n_samples::Int64, factor_dist::Vector)
+    CallableModelSample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix)
+    CallableModelSample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix, sampler)
+    CallableModelSample(A::DataFrame, B::DataFrame; conditional_sampler=nothing)
+    CallableModelSample(A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing)
 
 SAShE samples (`X`) and permutations (`π`).
 
@@ -210,42 +210,42 @@ A = DataFrame(rand(du, n_samples, n_factors), factor_names)
 B = DataFrame(rand(du, n_samples, n_factors), factor_names)
 permutations = ...
 
-S_x = SAShESample(A, B, permutations)
+S_x = CallableModelSample(A, B, permutations)
 Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
 Φₙ, Φ²ₙ = analyze(S_x, Y)
 
 # With pre-defined samples (halved and split into `A` and `B`)
 X = Matrix(QMC.sample(2048, fill(-π, 3), fill(Float64(π), 3), Uniform())')
-S_x = SAShESample([:x1, :x2, :x3], X)
+S_x = CallableModelSample([:x1, :x2, :x3], X)
 Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
 Φₙ, Φ²ₙ = analyze(S_x, Y)
 
 # With a given sampler to create custom permutations
 X = Matrix(QMC.sample(2048, fill(-π, 3), fill(Float64(π), 3), Uniform())')
-S_x = SAShESample([:x1, :x2, :x3], X, QMC.LatinHypercubeSample())
+S_x = CallableModelSample([:x1, :x2, :x3], X, QMC.LatinHypercubeSample())
 Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
 Φₙ, Φ²ₙ = analyze(S_x, Y)
 
 # With dependent factors: redraw resampled factors conditional on the frozen ones
-S_x = SAShESample(A, B; conditional_sampler=my_conditional_sampler)
+S_x = CallableModelSample(A, B; conditional_sampler=my_conditional_sampler)
 Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
 Φₙ, Φ²ₙ = analyze(S_x, Y)
 ```
 
 $(FIELDS)
 """
-struct SAShESample
+struct CallableModelSample
     "SAShE samples"
     samples
 
     "Permutation applied to generate samples."
     permutations
 
-    function SAShESample(problem::SAShEModel)
+    function CallableModelSample(problem::CallableModel)
         X, p = _generate_samples(problem.X1, problem.X2, problem.permutations)
         return new(X, p)
     end
-    function SAShESample(
+    function CallableModelSample(
         factor_names::Union{Vector{String}, Vector{Symbol}},
         n_samples::Int64,
         factor_dist::Vector,
@@ -254,14 +254,14 @@ struct SAShESample
         return new(X, p)
     end
 
-    function SAShESample(
+    function CallableModelSample(
         factor_names::Union{Vector{String}, Vector{Symbol}}, samples::Matrix
     )
         X, p = create_sample(factor_names, samples)
         return new(X, p)
     end
 
-    function SAShESample(
+    function CallableModelSample(
         factor_names::Union{Vector{String}, Vector{Symbol}}, samples::Matrix, sampler
     )
         A, B = _even_split(factor_names, samples)
@@ -269,12 +269,12 @@ struct SAShESample
         return new(X, p)
     end
 
-    function SAShESample(A::DataFrame, B::DataFrame; conditional_sampler=nothing)
+    function CallableModelSample(A::DataFrame, B::DataFrame; conditional_sampler=nothing)
         permutations = generate_permutations(size(A)...)
-        return SAShESample(A, B, permutations; conditional_sampler=conditional_sampler)
+        return CallableModelSample(A, B, permutations; conditional_sampler=conditional_sampler)
     end
 
-    function SAShESample(
+    function CallableModelSample(
         A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing
     )
         X, p = _generate_samples(A, B, permutations)

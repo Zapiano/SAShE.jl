@@ -187,3 +187,49 @@ function analyze(
 
     return Φₙ_increments, Φₙ²_increments
 end
+
+"""
+    DataModel(X::DataFrame, Y::Vector)
+
+Container for the "fixed dataset, no callable model" case: wraps the `(X, Y)` pair
+analyzed by [`analyze(model::DataModel, n_permutations::Integer)`](@ref).
+
+# Arguments
+- `X` : Fixed sample of inputs, one row per observation, one column per factor.
+- `Y` : Corresponding outputs, `Y[n]` is the already-known output for row `n` of `X`.
+"""
+struct DataModel
+    X::DataFrame
+    Y::Vector
+end
+
+"""
+    analyze(model::DataModel, n_permutations::Integer; rng=default_rng())::Tuple{Matrix{Float64},Matrix{Float64}}
+
+Equivalent to [`analyze(X::DataFrame, Y::Vector, n_permutations::Integer)`](@ref), taking a
+[`DataModel`](@ref) instead of a loose `(X, Y)` pair.
+"""
+function analyze(
+    model::DataModel, n_permutations::Integer; rng::AbstractRNG=default_rng()
+)::Tuple{Matrix{Float64}, Matrix{Float64}}
+    return analyze(model.X, model.Y, n_permutations; rng=rng)
+end
+
+"""
+    MixModel(func::Function, X::DataFrame, Y::Vector)
+
+Container for the "callable model, plus an existing dataset" case: a nearest-neighbour
+lookup into `(X, Y)` picks *where* to evaluate `func`, rather than reusing a stored `Y`
+value. Estimation logic not yet implemented — this type exists so callers can construct it,
+but no `analyze` method is defined for it yet.
+
+# Arguments
+- `func` : A function that accepts a vector of inputs as argument.
+- `X` : Existing sample of inputs, one row per observation, one column per factor.
+- `Y` : Corresponding outputs, `Y[n]` is the already-known output for row `n` of `X`.
+"""
+struct MixModel
+    func::Function
+    X::DataFrame
+    Y::Vector
+end
