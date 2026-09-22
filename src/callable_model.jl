@@ -61,6 +61,210 @@ struct CallableModel
     end
 end
 
+"""
+    CallableModelSample(factor_names::Union{Vector{String},Vector{Symbol}}, n_samples::Int64, factor_dist::Vector)
+    CallableModelSample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix)
+    CallableModelSample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix, sampler)
+    CallableModelSample(A::DataFrame, B::DataFrame; conditional_sampler=nothing)
+    CallableModelSample(A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing)
+
+SAShE samples (`X`) and permutations (`π`).
+
+Pass `conditional_sampler` when some factors are dependent: after the pick-freeze samples
+are built, every non-base row has its resampled factors redrawn conditional on the frozen
+ones. See [`_conditionally_resample!`](@ref) for the expected signature.
+
+# Examples
+```julia
+import QuasiMonteCarlo as QMC
+using Distributions
+using Random
+
+function ishigami(X::Vector{Float64}; a::Float64=7.0, b::Float64=0.1)
+    return (1 + b * X[3]^4) * sin(X[1]) + a * (sin(X[2]))^2
+end
+
+# With pre-defined samples `A` and `B`
+du = Uniform(-π, π)
+n_samples = 1000
+n_factors = 3
+
+# Samples with shape [n_samples ⋅ n_factors] and known permutations
+A = DataFrame(rand(du, n_samples, n_factors), factor_names)
+B = DataFrame(rand(du, n_samples, n_factors), factor_names)
+permutations = ...
+
+S_x = CallableModelSample(A, B, permutations)
+Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
+Φₙ, Φ²ₙ = analyze(S_x, Y)
+
+# With pre-defined samples (halved and split into `A` and `B`)
+X = Matrix(QMC.sample(2048, fill(-π, 3), fill(Float64(π), 3), Uniform())')
+S_x = CallableModelSample([:x1, :x2, :x3], X)
+Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
+Φₙ, Φ²ₙ = analyze(S_x, Y)
+
+# With a given sampler to create custom permutations
+X = Matrix(QMC.sample(2048, fill(-π, 3), fill(Float64(π), 3), Uniform())')
+S_x = CallableModelSample([:x1, :x2, :x3], X, QMC.LatinHypercubeSample())
+Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
+Φₙ, Φ²ₙ = analyze(S_x, Y)
+
+# With dependent factors: redraw resampled factors conditional on the frozen ones
+S_x = CallableModelSample(A, B; conditional_sampler=my_conditional_sampler)
+Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
+Φₙ, Φ²ₙ = analyze(S_x, Y)
+```
+
+$(FIELDS)
+"""
+struct CallableModelSample
+    "SAShE samples"
+    samples
+
+    "Permutation applied to generate samples."
+    permutations
+
+    function CallableModelSample(problem::CallableModel)
+        X, p = _generate_samples(problem.X1, problem.X2, problem.permutations)
+        return new(X, p)
+    end
+    function CallableModelSample(
+        factor_names::Union{Vector{String}, Vector{Symbol}},
+        n_samples::Int64,
+        factor_dist::Vector,
+    )
+        X, p = create_sample(factor_names, n_samples, factor_dist)
+        return new(X, p)
+    end
+
+    function CallableModelSample(
+        factor_names::Union{Vector{String}, Vector{Symbol}}, samples::Matrix
+    )
+        X, p = create_sample(factor_names, samples)
+        return new(X, p)
+    end
+
+    function CallableModelSample(
+        factor_names::Union{Vector{String}, Vector{Symbol}}, samples::Matrix, sampler
+    )
+        A, B = _even_split(factor_names, samples)
+        X, p = _generate_samples(A, B, sampler)
+        return new(X, p)
+    end
+
+    function CallableModelSample(A::DataFrame, B::DataFrame; conditional_sampler=nothing)
+        permutations = generate_permutations(size(A)...)
+        return CallableModelSample(A, B, permutations; conditional_sampler=conditional_sampler)
+    end
+
+    function CallableModelSample(
+        A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing
+    )
+        X, p = _generate_samples(A, B, permutations)
+        if !isnothing(conditional_sampler)
+            _conditionally_resample!(X, A, B, permutations, conditional_sampler)
+        end
+        return new(X, p)
+    end
+end
+
+"""
+    analyze(s_model::CallableModel)
+    analyze(X::DataFrame, Y::Vector, perms::Matrix)
+    analyze(S::CallableModelSample, Y::Vector)
+
+TODO Rename `analyze` to `shapley_effect`?
+
+Dependent factors are handled at sampling time: build the samples with
+`CallableModelSample(X1, X2; conditional_sampler=...)`, run the model over `S.samples`, then call
+`analyze(S, Y)`.
+
+# Arguments
+- `s_model` : SAShE CallableModel
+- `S` : SAShE sample
+- `Y` : Resulting outputs from `X`
+- `X` : Inputs used to run target model
+- `perms` : Permutation order
+
+# Returns
+Tuple, of Φₙ and Φₙ² (Shapley Effect and variance) or tuple of matrices Φₙ, Φ²ₙ, Yₙ, with:
+
+    - Φₙ : Shapley effects for base samples (size `N`)
+    - Φ²ₙ : Variance of Shapley effects used to estimate confidence bounds
+    - Yₙ : Model run results the parameters `s_model.X1`
+"""
+function analyze(s_model::CallableModel)
+    n_samples = s_model.n_samples
+
+    res = @showprogress pmap(
+        _shapley_effect_iteration,
+        repeated(s_model.func, n_samples),
+        eachrow(s_model.X1),
+        eachrow(s_model.X2),
+        eachrow(s_model.permutations),
+        eachrow(s_model.Y⁻),
+        eachrow(s_model.Y⁺),
+        eachrow(s_model.Φ_increments),
+        eachrow(s_model.Φ²_increments),
+        repeated(s_model.n_samples, n_samples),
+    )
+
+    # TODO Return a better object, either a `Solution` or a new version of `CallableModel`
+    return hcat([r[1] for r ∈ res]...), hcat([r[2] for r ∈ res]...), [r[3] for r ∈ res]
+end
+function analyze(S::CallableModelSample, Y::Vector)
+    X = S.samples
+    return analyze(X, Y, S.permutations)
+end
+function analyze(X::DataFrame, Y::Vector, perms::Matrix)
+    n_var_params = size(X, 2)
+    n_base_samples = size(perms, 1)
+
+    check_size = Int64(size(X, 1) / (n_var_params + 1))
+    @assert check_size == n_base_samples "Sample sizes do not match!"
+
+    Φₙ_increments = zeros(n_base_samples, n_var_params)
+    Φₙ²_increments = zeros(n_base_samples, n_var_params)
+
+    Yₙ⁻ = zeros(n_var_params)
+    Yₙ⁺ = zeros(n_var_params)
+
+    # For each sample...
+    for n ∈ 1:n_base_samples
+        # Calculate the starting index for this base sample
+        base_idx = (n - 1) * (n_var_params + 1) + 1
+
+        # Yₙ⁻ is the result for Xₙ, and gets replaced by Yₙ⁺
+        # Yₙ⁺ is the result for Xₙ₊₁
+        πₙ = perms[n, :]
+        Yₙ = Y[base_idx]
+
+        Yₙ⁻ .= 0.0
+        Yₙ⁺ .= 0.0
+        Yₙ⁻[πₙ[1]] = Yₙ  # Set first value according to permutation
+
+        for param_idx ∈ 1:n_var_params
+            eval_idx = base_idx + param_idx
+            t_param_idx = πₙ[param_idx]
+
+            Yₙ⁺[t_param_idx] = Y[eval_idx]
+
+            f_diff = (Yₙ⁻[t_param_idx] - Yₙ⁺[t_param_idx])
+            f_arg = (Yₙ - Yₙ⁻[t_param_idx] / 2 - Yₙ⁺[t_param_idx] / 2) * f_diff
+
+            Φₙ_increments[n, t_param_idx] = f_arg * (1 / n_base_samples)
+            Φₙ²_increments[n, t_param_idx] = f_arg^2 * (1 / n_base_samples)
+
+            if param_idx < n_var_params
+                Yₙ⁻[πₙ[param_idx + 1]] = Yₙ⁺[t_param_idx]
+            end
+        end
+    end
+
+    return (Matrix(Φₙ_increments'), Matrix(Φₙ²_increments'))
+end
+
 function _validate_callable_model(X1::DataFrame, X2::DataFrame)
     size_error_msg = "`samples_X1` and `samples_X2` must have the same size"
     factor_names_error_msg = "`samples_X1` and `samples_X2` must have the same factors"
@@ -249,114 +453,6 @@ function create_sample(factor_names::Vector, X::Matrix)
     return _generate_samples(A, B)
 end
 
-"""
-    CallableModelSample(factor_names::Union{Vector{String},Vector{Symbol}}, n_samples::Int64, factor_dist::Vector)
-    CallableModelSample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix)
-    CallableModelSample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix, sampler)
-    CallableModelSample(A::DataFrame, B::DataFrame; conditional_sampler=nothing)
-    CallableModelSample(A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing)
-
-SAShE samples (`X`) and permutations (`π`).
-
-Pass `conditional_sampler` when some factors are dependent: after the pick-freeze samples
-are built, every non-base row has its resampled factors redrawn conditional on the frozen
-ones. See [`_conditionally_resample!`](@ref) for the expected signature.
-
-# Examples
-```julia
-import QuasiMonteCarlo as QMC
-using Distributions
-using Random
-
-function ishigami(X::Vector{Float64}; a::Float64=7.0, b::Float64=0.1)
-    return (1 + b * X[3]^4) * sin(X[1]) + a * (sin(X[2]))^2
-end
-
-# With pre-defined samples `A` and `B`
-du = Uniform(-π, π)
-n_samples = 1000
-n_factors = 3
-
-# Samples with shape [n_samples ⋅ n_factors] and known permutations
-A = DataFrame(rand(du, n_samples, n_factors), factor_names)
-B = DataFrame(rand(du, n_samples, n_factors), factor_names)
-permutations = ...
-
-S_x = CallableModelSample(A, B, permutations)
-Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
-Φₙ, Φ²ₙ = analyze(S_x, Y)
-
-# With pre-defined samples (halved and split into `A` and `B`)
-X = Matrix(QMC.sample(2048, fill(-π, 3), fill(Float64(π), 3), Uniform())')
-S_x = CallableModelSample([:x1, :x2, :x3], X)
-Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
-Φₙ, Φ²ₙ = analyze(S_x, Y)
-
-# With a given sampler to create custom permutations
-X = Matrix(QMC.sample(2048, fill(-π, 3), fill(Float64(π), 3), Uniform())')
-S_x = CallableModelSample([:x1, :x2, :x3], X, QMC.LatinHypercubeSample())
-Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
-Φₙ, Φ²ₙ = analyze(S_x, Y)
-
-# With dependent factors: redraw resampled factors conditional on the frozen ones
-S_x = CallableModelSample(A, B; conditional_sampler=my_conditional_sampler)
-Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
-Φₙ, Φ²ₙ = analyze(S_x, Y)
-```
-
-$(FIELDS)
-"""
-struct CallableModelSample
-    "SAShE samples"
-    samples
-
-    "Permutation applied to generate samples."
-    permutations
-
-    function CallableModelSample(problem::CallableModel)
-        X, p = _generate_samples(problem.X1, problem.X2, problem.permutations)
-        return new(X, p)
-    end
-    function CallableModelSample(
-        factor_names::Union{Vector{String}, Vector{Symbol}},
-        n_samples::Int64,
-        factor_dist::Vector,
-    )
-        X, p = create_sample(factor_names, n_samples, factor_dist)
-        return new(X, p)
-    end
-
-    function CallableModelSample(
-        factor_names::Union{Vector{String}, Vector{Symbol}}, samples::Matrix
-    )
-        X, p = create_sample(factor_names, samples)
-        return new(X, p)
-    end
-
-    function CallableModelSample(
-        factor_names::Union{Vector{String}, Vector{Symbol}}, samples::Matrix, sampler
-    )
-        A, B = _even_split(factor_names, samples)
-        X, p = _generate_samples(A, B, sampler)
-        return new(X, p)
-    end
-
-    function CallableModelSample(A::DataFrame, B::DataFrame; conditional_sampler=nothing)
-        permutations = generate_permutations(size(A)...)
-        return CallableModelSample(A, B, permutations; conditional_sampler=conditional_sampler)
-    end
-
-    function CallableModelSample(
-        A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing
-    )
-        X, p = _generate_samples(A, B, permutations)
-        if !isnothing(conditional_sampler)
-            _conditionally_resample!(X, A, B, permutations, conditional_sampler)
-        end
-        return new(X, p)
-    end
-end
-
 function _shapley_effect_iteration(
     func::Function,
     X1ₙ::DataFrameRow,
@@ -398,100 +494,4 @@ function _shapley_effect_iteration(
 
     # TODO Maybe we could return a solution object with the below plus Φ and Φ²
     return (Φₙ_increments, Φₙ²_increments, Yₙ)
-end
-
-"""
-    analyze(s_model::CallableModel)
-    analyze(X::DataFrame, Y::Vector, perms::Matrix)
-    analyze(S::CallableModelSample, Y::Vector)
-
-TODO Rename `analyze` to `shapley_effect`?
-
-Dependent factors are handled at sampling time: build the samples with
-`CallableModelSample(X1, X2; conditional_sampler=...)`, run the model over `S.samples`, then call
-`analyze(S, Y)`.
-
-# Arguments
-- `s_model` : SAShE CallableModel
-- `S` : SAShE sample
-- `Y` : Resulting outputs from `X`
-- `X` : Inputs used to run target model
-- `perms` : Permutation order
-
-# Returns
-Tuple, of Φₙ and Φₙ² (Shapley Effect and variance) or tuple of matrices Φₙ, Φ²ₙ, Yₙ, with:
-
-    - Φₙ : Shapley effects for base samples (size `N`)
-    - Φ²ₙ : Variance of Shapley effects used to estimate confidence bounds
-    - Yₙ : Model run results the parameters `s_model.X1`
-"""
-function analyze(s_model::CallableModel)
-    n_samples = s_model.n_samples
-
-    res = @showprogress pmap(
-        _shapley_effect_iteration,
-        repeated(s_model.func, n_samples),
-        eachrow(s_model.X1),
-        eachrow(s_model.X2),
-        eachrow(s_model.permutations),
-        eachrow(s_model.Y⁻),
-        eachrow(s_model.Y⁺),
-        eachrow(s_model.Φ_increments),
-        eachrow(s_model.Φ²_increments),
-        repeated(s_model.n_samples, n_samples),
-    )
-
-    # TODO Return a better object, either a `Solution` or a new version of `CallableModel`
-    return hcat([r[1] for r ∈ res]...), hcat([r[2] for r ∈ res]...), [r[3] for r ∈ res]
-end
-function analyze(S::CallableModelSample, Y::Vector)
-    X = S.samples
-    return analyze(X, Y, S.permutations)
-end
-function analyze(X::DataFrame, Y::Vector, perms::Matrix)
-    n_var_params = size(X, 2)
-    n_base_samples = size(perms, 1)
-
-    check_size = Int64(size(X, 1) / (n_var_params + 1))
-    @assert check_size == n_base_samples "Sample sizes do not match!"
-
-    Φₙ_increments = zeros(n_base_samples, n_var_params)
-    Φₙ²_increments = zeros(n_base_samples, n_var_params)
-
-    Yₙ⁻ = zeros(n_var_params)
-    Yₙ⁺ = zeros(n_var_params)
-
-    # For each sample...
-    for n ∈ 1:n_base_samples
-        # Calculate the starting index for this base sample
-        base_idx = (n - 1) * (n_var_params + 1) + 1
-
-        # Yₙ⁻ is the result for Xₙ, and gets replaced by Yₙ⁺
-        # Yₙ⁺ is the result for Xₙ₊₁
-        πₙ = perms[n, :]
-        Yₙ = Y[base_idx]
-
-        Yₙ⁻ .= 0.0
-        Yₙ⁺ .= 0.0
-        Yₙ⁻[πₙ[1]] = Yₙ  # Set first value according to permutation
-
-        for param_idx ∈ 1:n_var_params
-            eval_idx = base_idx + param_idx
-            t_param_idx = πₙ[param_idx]
-
-            Yₙ⁺[t_param_idx] = Y[eval_idx]
-
-            f_diff = (Yₙ⁻[t_param_idx] - Yₙ⁺[t_param_idx])
-            f_arg = (Yₙ - Yₙ⁻[t_param_idx] / 2 - Yₙ⁺[t_param_idx] / 2) * f_diff
-
-            Φₙ_increments[n, t_param_idx] = f_arg * (1 / n_base_samples)
-            Φₙ²_increments[n, t_param_idx] = f_arg^2 * (1 / n_base_samples)
-
-            if param_idx < n_var_params
-                Yₙ⁻[πₙ[param_idx + 1]] = Yₙ⁺[t_param_idx]
-            end
-        end
-    end
-
-    return (Matrix(Φₙ_increments'), Matrix(Φₙ²_increments'))
 end

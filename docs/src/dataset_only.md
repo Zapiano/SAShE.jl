@@ -74,12 +74,18 @@ too coarse — a larger dataset helps here too).
 
 ## Caveats
 
-- **The neighbour count is fixed at 2**, not a tunable accuracy knob — it's a structural
-  requirement of the estimator's own derivation, not a budget setting. Increasing dataset
-  size or permutation count are the available ways to reduce estimator variance.
+- **The neighbour count is fixed at 2**, not a tunable accuracy knob. `V_u = Var(E(Y|X_u))`
+  is recovered via `E(E(Y|X_u)²) = E(f(X)f(X^u))` ([1]'s Proposition 2), which holds only
+  because it multiplies exactly *two* conditionally-independent draws sharing the same
+  conditional mean `Z = E(Y|X_u)` — the standard `E[Z₁Z₂] = Z²` trick for an unbiased
+  estimator of a squared mean (`E[Z₁²]` alone would be biased upward by `Var(Z₁)`).
+  Multiplying three or more draws together would estimate a different, wrong quantity, not
+  a more accurate `V_u`. Increasing dataset size or permutation count are the available ways
+  to reduce estimator variance instead.
 - **Distance is standardized Euclidean** by default (each coordinate z-scored before
-  comparing) — coordinates on very different scales are handled, but correlation between
-  coordinates is not yet accounted for (a Mahalanobis-distance option is planned).
+  comparing) — unweighted Euclidean distance would otherwise let whichever coordinate has
+  the largest variance dominate the search. This accounts for scale but not correlation
+  between coordinates (a Mahalanobis-distance option, accounting for both, is planned).
 - Only continuous/discrete numerical inputs are supported; categorical inputs are not yet.
 
 See the [References](@ref) page for the estimator's full citation.

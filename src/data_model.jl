@@ -2,45 +2,18 @@ using Random: AbstractRNG, default_rng, randperm
 using Statistics: mean, var
 
 """
-    _nearest_neighbour_pick_freeze(X, Y, Ȳ, s, u; rng=default_rng())::Float64
+    DataModel(X::DataFrame, Y::Vector)
 
-The V̂^knn_{u,s,PF} estimator of [1], §6.1.2, Eq. (23): the product of the outputs of the
-two nearest neighbours (restricted to coordinates `u`) of row `s` of `X`, minus the squared
-sample mean of `Y`. Uses only values already present in `(X, Y)` — no new function
-evaluations.
-
-The neighbour count is fixed at 2 (see the `N_I` local below) — not a tunable accuracy/cost
-knob the way `N_I` is for the (not-yet-implemented) double Monte-Carlo estimator. It's a
-structural requirement of the estimator itself: `V_u` is recovered via
-`E(E(Y|X_u)²) = E(f(X)f(X^u))` ([1]'s Proposition 2), which holds only because it multiplies
-exactly *two* conditionally-independent draws sharing the same conditional mean
-`Z = E(Y|X_u)` — the standard `E[Z₁Z₂] = Z²` trick for an unbiased estimator of a squared
-mean (`E[Z₁²]` alone would be biased upward by `Var(Z₁)`). Multiplying three or more draws
-together would estimate a different, wrong quantity (something like `E[Z³]`), not a more
-accurate `V_u` — so this isn't exposed as a keyword.
+Container for the "fixed dataset, no callable model" case: wraps the `(X, Y)` pair
+analyzed by [`analyze(model::DataModel, n_permutations::Integer)`](@ref).
 
 # Arguments
-- `X` : Sample matrix, rows = observations, columns = coordinates.
+- `X` : Fixed sample of inputs, one row per observation, one column per factor.
 - `Y` : Corresponding outputs, `Y[n]` is the already-known output for row `n` of `X`.
-- `Ȳ` : Sample mean of `Y` (passed in so callers don't recompute it on every call).
-- `s` : Row index, in `1:size(X, 1)`, of the query point.
-- `u` : Coalition (column indices), nonempty and a proper subset of the factors, to
-  restrict the nearest-neighbour search to.
-- `rng` : Random number generator used for tie-breaking (keyword, optional).
-
-# Returns
-A single `Float64`: the estimate of V_u = Var(E(Y | X_u)).
-
-See the [References](@ref) page for the full citation behind [1].
 """
-function _nearest_neighbour_pick_freeze(
-    X::AbstractMatrix, Y::AbstractVector{<:Real}, Ȳ::Real, s::Integer,
-    u::AbstractVector{<:Integer}; rng::AbstractRNG=default_rng(),
-)::Float64
-    # Fixed by the estimator's own structure, not a tunable accuracy knob — see docstring.
-    N_I = 2
-    idx = _nearest_neighbour_indices(X, s, u, N_I; rng=rng)
-    return Y[idx[1]] * Y[idx[2]] - Ȳ^2
+struct DataModel
+    X::DataFrame
+    Y::Vector
 end
 
 """
@@ -50,7 +23,8 @@ Estimate Shapley effects from a fixed dataset `(X, Y)` alone — no callable mod
 joint-distribution model — using [1]'s nearest-neighbour "knn" Pick-and-Freeze estimator
 (§6.1.2, Eq. 23) combined with [2]'s random-permutation W-aggregation procedure (Eq. 14).
 Zero new function evaluations: every conditional-element estimate reuses `Y` values already
-present in the dataset.
+present in the dataset. See the [Dataset-only workflow](@ref) page for a full walk-through
+and the estimator's caveats.
 
 For each of `n_permutations` random permutations of the factors, a single random reference
 row is drawn from `X`; walking the permutation builds nested coalitions
@@ -108,21 +82,6 @@ function analyze(
 end
 
 """
-    DataModel(X::DataFrame, Y::Vector)
-
-Container for the "fixed dataset, no callable model" case: wraps the `(X, Y)` pair
-analyzed by [`analyze(model::DataModel, n_permutations::Integer)`](@ref).
-
-# Arguments
-- `X` : Fixed sample of inputs, one row per observation, one column per factor.
-- `Y` : Corresponding outputs, `Y[n]` is the already-known output for row `n` of `X`.
-"""
-struct DataModel
-    X::DataFrame
-    Y::Vector
-end
-
-"""
     analyze(model::DataModel, n_permutations::Integer; rng=default_rng())::Tuple{Matrix{Float64},Matrix{Float64}}
 
 Equivalent to [`analyze(X::DataFrame, Y::Vector, n_permutations::Integer)`](@ref), taking a
@@ -132,4 +91,39 @@ function analyze(
     model::DataModel, n_permutations::Integer; rng::AbstractRNG=default_rng()
 )::Tuple{Matrix{Float64}, Matrix{Float64}}
     return analyze(model.X, model.Y, n_permutations; rng=rng)
+end
+
+"""
+    _nearest_neighbour_pick_freeze(X, Y, Ȳ, s, u; rng=default_rng())::Float64
+
+The V̂^knn_{u,s,PF} estimator of [1], §6.1.2, Eq. (23): the product of the outputs of the
+two nearest neighbours (restricted to coordinates `u`) of row `s` of `X`, minus the squared
+sample mean of `Y`. Uses only values already present in `(X, Y)` — no new function
+evaluations.
+
+The neighbour count is fixed at 2, not a tunable accuracy/cost knob — see the
+[Dataset-only workflow](@ref) page's Caveats section for why.
+
+# Arguments
+- `X` : Sample matrix, rows = observations, columns = coordinates.
+- `Y` : Corresponding outputs, `Y[n]` is the already-known output for row `n` of `X`.
+- `Ȳ` : Sample mean of `Y` (passed in so callers don't recompute it on every call).
+- `s` : Row index, in `1:size(X, 1)`, of the query point.
+- `u` : Coalition (column indices), nonempty and a proper subset of the factors, to
+  restrict the nearest-neighbour search to.
+- `rng` : Random number generator used for tie-breaking (keyword, optional).
+
+# Returns
+A single `Float64`: the estimate of V_u = Var(E(Y | X_u)).
+
+See the [References](@ref) page for the full citation behind [1].
+"""
+function _nearest_neighbour_pick_freeze(
+    X::AbstractMatrix, Y::AbstractVector{<:Real}, Ȳ::Real, s::Integer,
+    u::AbstractVector{<:Integer}; rng::AbstractRNG=default_rng(),
+)::Float64
+    # Fixed by the estimator's own structure, not a tunable accuracy knob — see docstring.
+    N_I = 2
+    idx = _nearest_neighbour_indices(X, s, u, N_I; rng=rng)
+    return Y[idx[1]] * Y[idx[2]] - Ȳ^2
 end

@@ -7,11 +7,9 @@ using Statistics: std
 
 Z-score each column (coordinate) of `X` by its sample standard deviation.
 
-Coordinates handed to nearest-neighbour search are not assumed to share a common scale or
-to be independent of each other; unweighted Euclidean distance would otherwise let
-whichever coordinate has the largest variance dominate the search. Standardizing accounts
-for scale but not correlation between coordinates — a Mahalanobis-distance option
-(accounting for both) is deferred to a later addition.
+Coordinates handed to nearest-neighbour search are not assumed to share a common scale —
+see the [Dataset-only workflow](@ref) page's Caveats section for why standardized Euclidean
+(not Mahalanobis) is the default.
 
 # Arguments
 - `X` : Sample matrix, rows = observations, columns = coordinates.
