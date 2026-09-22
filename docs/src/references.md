@@ -15,3 +15,7 @@ Numbered so that `[1]`, `[2]`, etc. mean the same paper everywhere in this packa
 4. Goda, T. (2021). A simple algorithm for global sensitivity analysis with Shapley
    effects. *Reliability Engineering & System Safety*, 213, 107702.
    [https://doi.org/10.1016/j.ress.2021.107702](https://doi.org/10.1016/j.ress.2021.107702)
+5. Pianosi, F., Beven, K., Freer, J., Hall, J. W., Rougier, J., Stephenson, D. B., &
+   Wagener, T. (2016). Sensitivity analysis of environmental models: A systematic review
+   with practical workflow. *Environmental Modelling & Software*, 79, 214–232.
+   [https://doi.org/10.1016/j.envsoft.2016.02.008](https://doi.org/10.1016/j.envsoft.2016.02.008)

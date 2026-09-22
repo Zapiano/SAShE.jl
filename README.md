@@ -2,72 +2,51 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16777876.svg)](https://doi.org/10.5281/zenodo.16777876) [![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/JuliaDiff/BlueStyle) [![Docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://Zapiano.github.io/SAShE.jl)
 
-This package performs a Sensitivity Analysis using Shapley Effects given a model in the form of a function, referred to here as `my_model`, that accepts a vector of factors `X`. The approach implemented here was presented in [1]. If the user is using `Distributed` and has added some procs with `addprocs`, `SAShE.solve` will be run using multiple cores.
+Sensitivity analysis with **Shapley effects** — a variance-based measure of how much each
+input factor contributes to the variability of a model's output, that sums exactly to the
+total output variance.
 
-The "examples/ishigami.jl" script can be used to compare the result of this implementation with the one from the paper for the Ishigami function.
+**Full documentation: [Zapiano.github.io/SAShE.jl](https://Zapiano.github.io/SAShE.jl)** —
+start with [Getting started](https://Zapiano.github.io/SAShE.jl/getting_started/) for a
+full walk-through, or [How it works](https://Zapiano.github.io/SAShE.jl/how_it_works/) for
+the algorithm.
 
-# Quick start
-
-Assuming a function `my_model` that  accepts a vector of factors `X`
-
-```julia
-my_model(X::Vector{Float64}) = X[1] + X[2]^2 + X[3]^3
-```
-
-First create two separate sample DataFrames with the same shape:
+## Installation
 
 ```julia
-using DataFrames
-
-n_factors = 3
-n_samples = 1000
-
-X1 = DataFrame(rand(n_samples, n_factors), :auto)
-X2 = DataFrame(rand(n_samples, n_factors), :auto)
+using Pkg
+Pkg.add(; url="https://github.com/Zapiano/SAShE.jl")
 ```
 
-Then create a `SAShE.Problem` instance and solve it:
+## Quick start
 
 ```julia
-using SAShE
+using SAShE, DataFrames, Distributions, Random
+Random.seed!(1)
 
-sa_problem = SAShE.Problem(my_model, X1, X2)
-Φ, Φ², Yₙ = SAShE.solve(sa_problem)
+# A model: any function taking a vector of factor values and returning a scalar
+ishigami(x) = (1 + 0.1x[3]^4) * sin(x[1]) + 7 * sin(x[2])^2
+
+# Two independent sample sets of the same shape (rows = samples, columns = factors)
+d = Uniform(-π, π)
+X1 = DataFrame(rand(d, 2000, 3), [:x1, :x2, :x3])
+X2 = DataFrame(rand(d, 2000, 3), [:x1, :x2, :x3])
+
+model = SAShEModel(ishigami, X1, X2)
+Φₙ, Φ²ₙ, Yₙ = analyze(model)
+
+Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)
+Φ
 ```
 
-The three objects returned are:
+`Φ[i]` is the Shapley effect of factor `i`; `Φlb[i]` and `Φub[i]` bracket its 95%
+confidence interval.
 
-- `Φₙ` : The contribution that each sample gives to the each factor's Shapley Effect expected value. The Shapley Effect for each factor, `Φ`, can be calculated by summing all columns of each row of `Φₙ` or simply `SAShE.shapley_effects(Φₙ)`;
-- `Φ²ₙ` : The contribution that each sample gives to each Shapley Effect squared expected valued (`E[Φ²]`). This can be used to calculate the [confidence intervals](#shapley-effects-and-confidence-intervals);
-- `Yₙ` : The value of the model calculated for each sample on `X1`. Besides being used in the Shapley Effects computation, the variance of `Yₙ` can be compared to the sum of the estimated Shapley Effects `Φ`. If the algorithm has converged, the sum of all Shapley Effects should approach the model's variance.
-
-## Shapley effects and confidence intervals
-
-The function `shapley_effects` returns each factor's Shapley Effect. If used with the second argument `Φ²ₙ`, it also returns the lower and upper bounds of each factor's Shapley Effect confidence interval.
-
-```julia
-# Vector of Shapley Effects for each factor
-Φ = SAShE.shapley_effects(Φₙ)
-
-# Or with confidence intervals
-
-Φ, Φ_lb , Φ_ub = SAShE.shapley_effects(Φₙ, Φ²ₙ)
-```
-
-The confidence intervals and margin of errors can also be accessed directly via:
-
-```julia
-# Margin of error
-SAShE.margin_of_error(Φₙ, Φ²ₙ)
-
-# Confidence interval
-SAShE.confint(Φₙ, Φ²ₙ)
-```
-
-# Contributing
+## Contributing
 
 This project uses [BlueStyle](https://domluna.github.io/JuliaFormatter.jl/dev/blue_style/) style guide with some extra configuration. If you use VSCode, you don't need to install any extensions, the `.JuliaFormatter.toml` will be automatically be used to format the files.
 
-# Reference
+## References
 
-1. Goda, T. (2021). A simple algorithm for global sensitivity analysis with Shapley effects. Reliability Engineering & System Safety, 213, 107702.
+See the [References](https://Zapiano.github.io/SAShE.jl/references/) page in the docs for
+citations.

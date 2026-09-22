@@ -1,5 +1,31 @@
 # Getting started
 
+Variance based sensitivity analysis asks: **which input factors actually drive the variability of a
+model's output, and by how much?** ([5] — see [References](@ref)) That matters for deciding which
+inputs are worth measuring more precisely, which ones can be fixed at a nominal value with little
+loss of accuracy, and where a model's behaviour is being driven by an interaction between factors
+rather than any one of them alone.
+
+**Shapley effects** answer this with a single number per factor, borrowed from
+cooperative game theory: treat each factor as a "player" contributing to the "payoff"
+(the output's variance), and split that payoff fairly among the players based on their
+average marginal contribution across every possible order in which they could be
+revealed. Two properties make this attractive over the classical Sobol' main/total
+effects:
+
+- **They sum exactly to the total output variance** — nothing is double-counted between
+  interacting factors, and nothing is left unattributed.
+- **They handle interactions and dependent factors** without needing a separate
+  decomposition for each — a factor with zero main effect but a strong interaction
+  still gets a non-zero share.
+
+The trade-off is cost: computing them exactly means evaluating every possible subset of
+factors, which is intractable beyond a handful of factors. SAShE.jl implements
+Monte Carlo estimators of the Shapley effects that avoid that blow-up (see
+[How it works](@ref)).
+
+## The running example
+
 This page walks through a full analysis of the
 [Ishigami function](https://en.wikipedia.org/wiki/Ishigami_function), a standard
 sensitivity-analysis test case with three independent inputs on `[-π, π]`.
