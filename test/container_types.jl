@@ -1,4 +1,4 @@
-@testset "DataModel: equivalent to the loose (X, Y) call" begin
+@testset "DataModel: analyze is deterministic given a seed" begin
     factor_names = [:x1, :x2, :x3]
     n_samples, n_factors = 200, length(factor_names)
     du = Uniform(-π, π)
@@ -6,12 +6,13 @@
 
     X = DataFrame(rand(du, n_samples, n_factors), factor_names)
     Y = map(row -> ishigami(collect(row)), eachrow(X))
+    model = DataModel(X, Y)
 
-    Φₙ_direct, Φ²ₙ_direct = SAShE.analyze(X, Y, 500; rng=Xoshiro(1))
-    Φₙ_model, Φ²ₙ_model = SAShE.analyze(DataModel(X, Y), 500; rng=Xoshiro(1))
+    Φₙ_a, Φ²ₙ_a = SAShE.analyze(model, 500; rng=Xoshiro(1))
+    Φₙ_b, Φ²ₙ_b = SAShE.analyze(model, 500; rng=Xoshiro(1))
 
-    @test Φₙ_direct == Φₙ_model
-    @test Φ²ₙ_direct == Φ²ₙ_model
+    @test Φₙ_a == Φₙ_b
+    @test Φ²ₙ_a == Φ²ₙ_b
 end
 
 @testset "MixModel: constructs, has no estimator yet" begin

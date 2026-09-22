@@ -17,7 +17,7 @@ struct DataModel
 end
 
 """
-    analyze(X::DataFrame, Y::Vector, n_permutations::Integer; rng=default_rng())::Tuple{Matrix{Float64},Matrix{Float64}}
+    analyze(model::DataModel, n_permutations::Integer; rng=default_rng())::Tuple{Matrix{Float64},Matrix{Float64}}
 
 Estimate Shapley effects from a fixed dataset `(X, Y)` alone — no callable model, no
 joint-distribution model — using [1]'s nearest-neighbour "knn" Pick-and-Freeze estimator
@@ -33,8 +33,7 @@ row is drawn from `X`; walking the permutation builds nested coalitions
 Shapley-effect contribution.
 
 # Arguments
-- `X` : Fixed sample of inputs, one row per observation, one column per factor.
-- `Y` : Corresponding outputs, `Y[n]` is the already-known output for row `n` of `X`.
+- `model` : The dataset to analyze, wrapped in a [`DataModel`](@ref).
 - `n_permutations` : Number of random permutations to average over — an accuracy/budget
   knob; more permutations means lower estimator variance.
 - `rng` : Random number generator (keyword, optional).
@@ -46,9 +45,10 @@ returns — pass to [`shapley_effects`](@ref) or [`confint`](@ref) as usual.
 See the [References](@ref) page for the full citations behind [1] and [2].
 """
 function analyze(
-    X::DataFrame, Y::Vector, n_permutations::Integer; rng::AbstractRNG=default_rng()
+    model::DataModel, n_permutations::Integer; rng::AbstractRNG=default_rng()
 )::Tuple{Matrix{Float64}, Matrix{Float64}}
-    Xm = Matrix(X)
+    Xm = Matrix(model.X)
+    Y = model.Y
     n_samples, n_factors = size(Xm)
     Ȳ = mean(Y)
     var_y = var(Y)
@@ -79,18 +79,6 @@ function analyze(
     end
 
     return Φₙ_increments, Φₙ²_increments
-end
-
-"""
-    analyze(model::DataModel, n_permutations::Integer; rng=default_rng())::Tuple{Matrix{Float64},Matrix{Float64}}
-
-Equivalent to [`analyze(X::DataFrame, Y::Vector, n_permutations::Integer)`](@ref), taking a
-[`DataModel`](@ref) instead of a loose `(X, Y)` pair.
-"""
-function analyze(
-    model::DataModel, n_permutations::Integer; rng::AbstractRNG=default_rng()
-)::Tuple{Matrix{Float64}, Matrix{Float64}}
-    return analyze(model.X, model.Y, n_permutations; rng=rng)
 end
 
 """
