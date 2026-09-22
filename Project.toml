@@ -1,30 +1,36 @@
 name = "SAShE"
 uuid = "83401093-d8e7-49c8-a98d-2b177fad4d3a"
 authors = ["Pedro Ribeiro de Almeida <pedroribalmeida@gmail.com>"]
-version = "0.3.1"
+version = "0.4.0"
 
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 QuasiMonteCarlo = "8a4e6c94-4038-4cdc-81c3-7e6ffdb2a71b"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 DataFrames = "1.7"
 Distributions = "0.25.120"
 DocStringExtensions = "0.9.5"
+NearestNeighbors = "0.4.29"
 ProgressMeter = "1.10"
 QuasiMonteCarlo = "0.3.3"
 Random = "1.11.0"
+Statistics = "1.11.0"
 julia = "1.11"
 
 [extras]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Distributions", "Random", "Test"]
+test = ["Distributions", "LinearAlgebra", "Random", "Statistics", "Test"]

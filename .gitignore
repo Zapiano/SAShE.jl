@@ -2,3 +2,6 @@
 .vscode/
 
 sandbox/
+
+docs/build/
+docs/Manifest.toml

@@ -14,19 +14,17 @@
 - `Φ²_increments` : Contribution that each sample iteration (rows) gives to each Shapley
 Effect squared expected valued
 
-# References
-1. Goda, T., 2021. A simple algorithm for global sensitivity analysis with Shapley effects. \
-   Reliability Engineering & System Safety 213, 107702. \
-   https://doi.org/10.1016/j.ress.2021.107702
+Implements the pick-and-freeze estimator of [4]. See the [References](@ref) page for the
+full citation.
 """
 struct SAShEModel
     func::Function
-    X1::DataFrame                       # What the paper calls x
-    X2::DataFrame                       # What the paper calls y
-    Y::Vector                           # What the paper calls F
-    Y⁻::Matrix                          # What the paper calls F⁻
-    Y⁺::Matrix                          # What the paper calls F⁺
-    permutations::Matrix{Int64}                # What the paper calls π
+    X1::DataFrame                       # What [4] calls x
+    X2::DataFrame                       # What [4] calls y
+    Y::Vector                           # What [4] calls F
+    Y⁻::Matrix                          # What [4] calls F⁻
+    Y⁺::Matrix                          # What [4] calls F⁺
+    permutations::Matrix{Int64}                # What [4] calls π
     Φ_increments::Matrix{Float64}
     Φ²_increments::Matrix{Float64}
     n_samples::Int64
