@@ -15,6 +15,8 @@ total output variance**. Each one therefore reads directly as "this fraction of 
 output's variance is attributable to this factor", which makes them easy to compare and to
 communicate.
 
+**Table 1.** Implementation status by use case and estimation method.
+
 | What you have | Pick-and-freeze | Double Monte Carlo |
 | :-- | :-- | :-- |
 | Model, inputs sampled from a known distribution (independent or dependent) | ✅ Implemented (`CallableModel`) | 🔲 Planned |

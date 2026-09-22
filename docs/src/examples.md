@@ -3,6 +3,8 @@
 One example per combination of "what you have" and "which estimation method" — click a
 cell to jump to its section.
 
+**Table 1** (as [Home](@ref)). Click a cell for its example or status.
+
 | What you have | Pick-and-freeze | Double Monte Carlo |
 | :-- | :-- | :-- |
 | Model, known-distribution inputs | [✅ Example](@ref "Model, known distribution — pick-and-freeze") | [🔲 Planned](@ref "Model, known distribution — double Monte Carlo") |
