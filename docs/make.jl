@@ -18,6 +18,7 @@ makedocs(;
         "Home" => "index.md",
         "Getting started" => "getting_started.md",
         "How it works" => "how_it_works.md",
+        "Dataset-only workflow" => "dataset_only.md",
         "Next steps" => "next_steps.md",
         "Naming conventions" => "naming_conventions.md",
         "References" => "references.md",
