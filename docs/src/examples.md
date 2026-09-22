@@ -3,7 +3,7 @@
 One example per combination of "what you have" and "which estimation method" — click a
 cell to jump to its section.
 
-**Table 1** (as [Home](@ref)). Click a cell for its example or status.
+**Table 1** (as on the home page). Click a cell for its example or status.
 
 | What you have | Pick-and-freeze | Double Monte Carlo |
 | :-- | :-- | :-- |
