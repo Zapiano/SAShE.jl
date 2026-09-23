@@ -25,7 +25,7 @@ instead of `3d`.
 ## Permutations
 
 For `N` base samples SAShE draws an `N × d` matrix `π`, one random factor ordering per row.
-`generate_permutations(N, d)` produces it; `SAShEModel` and `SAShESample` do this for you
+`generate_permutations(N, d)` produces it; `CallableModel` and `CallableModelSample` do this for you
 and store it, so the sampling and the analysis always use the same orderings.
 
 ## What is `Z`?
@@ -59,21 +59,21 @@ are read straight off consecutive entries of `Y` within each block.
 **Let SAShE drive it** — give it the function and the two sample sets:
 
 ```julia
-model = SAShEModel(f, X1, X2)
+model = CallableModel(f, X1, X2)
 Φₙ, Φ²ₙ, Yₙ = analyze(model)          # builds Z, runs f over it, analyses
 ```
 
 **Drive it yourself** — build the sample, run the model however you like, hand back `Y`:
 
 ```julia
-S = SAShESample(X1, X2)               # Z is S.samples; π is S.permutations
+S = CallableModelSample(X1, X2)               # Z is S.samples; π is S.permutations
 Y = map(row -> f(collect(row)), eachrow(S.samples))
 Φₙ, Φ²ₙ = analyze(S, Y)
 ```
 
 The second form is what you want when the model evaluation needs its own batching,
 checkpointing, or a compute cluster — or when the factors are dependent and `Z` needs to be
-conditionally resampled (`SAShESample(X1, X2; conditional_sampler = ...)`). A dedicated
+conditionally resampled (`CallableModelSample(X1, X2; conditional_sampler = ...)`). A dedicated
 guide for the dependent case is in [Next steps](@ref).
 
 ## What `analyze` returns

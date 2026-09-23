@@ -1,16 +1,34 @@
 # SAShE.jl
 
-Sensitivity analysis with **Shapley effects** — a variance-based measure of how much each
-input factor contributes to the variability of a model's output.
+Variance-based sensitivity analysis measures how much each input factor contributes to the
+variability of a model's output.
+
+SAShE.jl provides a range of methods for this using **Shapley effects**, covering three
+cases:
+
+1. The output is model-derived, and the inputs are sampled from some known distribution
+2. [TO DO] The output is model-derived, but the inputs are real data with unknown probability distributions
+3. Both the output and input are real data with unknown probability distributions
 
 Unlike the classical Sobol' main and total effects, Shapley effects **sum exactly to the
 total output variance**. Each one therefore reads directly as "this fraction of the
 output's variance is attributable to this factor", which makes them easy to compare and to
 communicate.
 
-SAShE.jl implements the simple Monte Carlo estimator of [4] — see [References](@ref) — it
-estimates every factor's Shapley effect simultaneously at a cost of `N·(d + 1)` model
-evaluations (`N` samples, `d` factors), together with unbiased confidence intervals.
+**Table 1.** Implementation status by use case and estimation method.
+
+| What you have | Pick-and-freeze | Double Monte Carlo |
+| :-- | :-- | :-- |
+| Model, inputs sampled from a known distribution (independent or dependent) | ✅ Implemented (`CallableModel`) | 🔲 Planned |
+| Model, inputs are real data with an unknown distribution ("mix") | 🔲 Planned | 🔲 Planned |
+| No model — both inputs and output are real data | ✅ Implemented (`DataModel`) | 🔲 Planned |
+
+The `CallableModel` pick-and-freeze estimator is [4]'s simple Monte Carlo estimator — see
+[References](@ref) — it estimates every factor's Shapley effect simultaneously at a cost of
+`N·(d + 1)` model evaluations (`N` samples, `d` factors), together with unbiased confidence
+intervals; see [How it works](@ref). `DataModel`'s pick-and-freeze estimator reuses values
+already present in the dataset instead — zero new evaluations; see
+[Dataset-only workflow](@ref).
 
 ## Installation
 
@@ -33,7 +51,7 @@ d = Uniform(-π, π)
 X1 = DataFrame(rand(d, 2000, 3), [:x1, :x2, :x3])
 X2 = DataFrame(rand(d, 2000, 3), [:x1, :x2, :x3])
 
-model = SAShEModel(ishigami, X1, X2)
+model = CallableModel(ishigami, X1, X2)
 Φₙ, Φ²ₙ, Yₙ = analyze(model)
 
 Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)

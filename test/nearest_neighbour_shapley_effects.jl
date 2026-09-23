@@ -46,7 +46,7 @@ end
     X = DataFrame(randn(n_samples, n_factors), [:x1, :x2, :x3, :x4])
     Y = collect(sum.(eachrow(X)) .+ 0.3 .* X.x1 .* X.x2)  # a bit of nonlinearity too
 
-    Φₙ, Φ²ₙ = SAShE.analyze(X, Y, 500)
+    Φₙ, Φ²ₙ = SAShE.analyze(DataModel(X, Y), 500)
     Φ = SAShE.shapley_effects(Φₙ)
 
     # Holds exactly (not just approximately) by construction: the last position of every
@@ -72,7 +72,7 @@ end
     X = DataFrame(Xm, [:x1, :x2, :x3])
     Y = collect(Xm * β)
 
-    Φₙ, Φ²ₙ = SAShE.analyze(X, Y, 6000)
+    Φₙ, Φ²ₙ = SAShE.analyze(DataModel(X, Y), 6000)
     Φ = SAShE.shapley_effects(Φₙ)
 
     @test all(abs.(Φ .- η_theoretical) .< 0.15 .* η_theoretical)
@@ -88,7 +88,7 @@ end
     X = DataFrame(rand(du, n_samples, n_factors), factor_names)
     Y = map(x -> ishigami(collect(x)), eachrow(X))
 
-    Φₙ, Φ²ₙ = SAShE.analyze(X, Y, 6000)
+    Φₙ, Φ²ₙ = SAShE.analyze(DataModel(X, Y), 6000)
     Φ = SAShE.shapley_effects(Φₙ)
 
     # Same theoretical baseline already validated (against the exact estimator) in
@@ -103,5 +103,5 @@ end
     X = DataFrame(randn(2, 3), [:x1, :x2, :x3])  # only 2 rows: N_I=2 needs ≥3
     Y = collect(sum.(eachrow(X)))
 
-    @test_throws ArgumentError SAShE.analyze(X, Y, 10)
+    @test_throws ArgumentError SAShE.analyze(DataModel(X, Y), 10)
 end

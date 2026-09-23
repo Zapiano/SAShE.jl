@@ -13,9 +13,9 @@ table:
 
 | Way | You provide | SAShE does | Use when |
 | :-- | :---------- | :--------- | :------- |
-| `SAShEModel` + `analyze(model)` | function, `X1`, `X2` | samples **and** runs the model | the model is cheap and in-process |
-| `SAShESample` + `analyze(S, Y)` | `X1`, `X2`; you run the model over `S.samples` | builds `Z` and `π` | custom batching, checkpointing, HPC / remote runs |
-| manual + `analyze(X, Y, perms)` | everything, including `Z` and `permutations` | analysis only | doing something unusual to `Z` |
+| `CallableModel` + `analyze(model)` | function, `X1`, `X2` | samples **and** runs the model | the model is cheap and in-process |
+| `CallableModelSample` + `analyze(S, Y)` | `X1`, `X2`; you run the model over `S.samples` | builds `Z` and `π` | custom batching, checkpointing, HPC / remote runs |
+| `CallableModelSample(X, perms)` + `analyze(S, Y)` | everything, including `Z` and `permutations` | analysis only | doing something unusual to `Z` |
 
 ### Dependent factors (how-to) — the important one
 
@@ -48,11 +48,11 @@ table:
 ### Reproducibility (explanation)
 
 Seeding, `Distributed` / `pmap` and per-worker RNG, why deterministic conditional samplers
-matter, quasi-Monte Carlo permutations via `SAShESample(names, X, sampler)`.
+matter, quasi-Monte Carlo permutations via `CallableModelSample(names, X, sampler)`.
 
 ### API reference
 
-Add `docs/src/api.md` with a `@docs` block for `SAShEModel`, `SAShESample`, `analyze`,
+Add `docs/src/api.md` with a `@docs` block for `CallableModel`, `CallableModelSample`, `analyze`,
 `SAShE.shapley_effects`, `SAShE.confint`, `SAShE.margin_of_error`, `generate_permutations`.
 Then set `checkdocs = :exports` (or `:all`) in `docs/make.jl` and drop the `:none`
 override.
@@ -70,7 +70,7 @@ override.
 ## Housekeeping noticed along the way
 
 - `README.md` is stale: it still refers to `SAShE.Problem` and `SAShE.solve`, which are now
-  `SAShEModel` and `analyze`. Either trim it to point at these docs or update it.
+  `CallableModel` and `analyze`. Either trim it to point at these docs or update it.
 - Consider exporting `shapley_effects`, `confint`, and `margin_of_error` — they are part of
   the normal workflow but currently need the `SAShE.` prefix.
 
