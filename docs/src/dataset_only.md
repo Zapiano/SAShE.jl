@@ -55,6 +55,9 @@ accuracy/budget knob, distinct from `n_samples` above (the size of the dataset i
 `Φₙ` and `Φ²ₙ` are increments in the same shape `CallableModel`'s workflow returns — every
 downstream helper works unchanged.
 
+`analyze` also takes an `estimator=` keyword — see [How it works](@ref) — currently only
+`PickAndFreeze()` (the default, so nothing above needs to change).
+
 ## 3. Turn the increments into estimates
 
 ```@example dataset_only

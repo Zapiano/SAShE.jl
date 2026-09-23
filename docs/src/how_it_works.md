@@ -22,6 +22,18 @@ the factors and move them one at a time from the resampled set to the held set: 
 pass yields the term for every factor at once, at `d + 1` model evaluations per sample
 instead of `3d`.
 
+## The `estimator=` keyword
+
+`analyze` takes an `estimator=` keyword selecting the estimation method — currently only
+`PickAndFreeze()` (the algorithm this page describes), which is also the default, so
+existing calls don't need to change. It exists as an extension point: other estimation
+methods are expected to land behind the same keyword later, without changing how you build
+or call `CallableModel`, `CallableModelSample`, or `DataModel`.
+
+```julia
+Φₙ, Φ²ₙ, Yₙ = analyze(model; estimator=PickAndFreeze())   # equivalent to analyze(model)
+```
+
 ## Permutations
 
 For `N` base samples SAShE draws an `N × d` matrix `π`, one random factor ordering per row.

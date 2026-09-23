@@ -182,8 +182,8 @@ struct CallableModelSample
 end
 
 """
-    analyze(model::CallableModel)
-    analyze(S::CallableModelSample, Y::Vector)
+    analyze(model::CallableModel; estimator::EstimationMethod=PickAndFreeze())
+    analyze(S::CallableModelSample, Y::Vector; estimator::EstimationMethod=PickAndFreeze())
 
 TODO Rename `analyze` to `shapley_effect`?
 
@@ -200,6 +200,8 @@ doesn't already cover.
 - `model` : SAShE CallableModel
 - `S` : SAShE sample
 - `Y` : Resulting outputs from `X`
+- `estimator` : Estimation method (keyword, optional) — see [`EstimationMethod`](@ref).
+  Defaults to, and for now is the only implemented, [`PickAndFreeze`](@ref).
 
 # Returns
 Tuple, of Φₙ and Φₙ² (Shapley Effect and variance) or tuple of matrices Φₙ, Φ²ₙ, Yₙ, with:
@@ -208,7 +210,16 @@ Tuple, of Φₙ and Φₙ² (Shapley Effect and variance) or tuple of matrices �
     - Φ²ₙ : Variance of Shapley effects used to estimate confidence bounds
     - Yₙ : Model run results the parameters `model.X1`
 """
-function analyze(model::CallableModel)
+function analyze(model::CallableModel; estimator::EstimationMethod=PickAndFreeze())
+    return _analyze(model, estimator)
+end
+function analyze(
+    S::CallableModelSample, Y::Vector; estimator::EstimationMethod=PickAndFreeze()
+)
+    return _analyze(S, Y, estimator)
+end
+
+function _analyze(model::CallableModel, ::PickAndFreeze)
     n_samples = model.n_samples
 
     res = @showprogress pmap(
@@ -227,7 +238,7 @@ function analyze(model::CallableModel)
     # TODO Return a better object, either a `Solution` or a new version of `CallableModel`
     return hcat([r[1] for r ∈ res]...), hcat([r[2] for r ∈ res]...), [r[3] for r ∈ res]
 end
-function analyze(S::CallableModelSample, Y::Vector)
+function _analyze(S::CallableModelSample, Y::Vector, ::PickAndFreeze)
     X = S.samples
     perms = S.permutations
     n_var_params = size(X, 2)
