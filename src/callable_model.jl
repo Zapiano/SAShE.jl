@@ -120,10 +120,22 @@ $(FIELDS)
 """
 struct CallableModelSample
     "SAShE samples"
-    samples
+    samples::DataFrame
 
     "Permutation applied to generate samples."
-    permutations
+    permutations::Matrix{Int64}
+
+    """
+        CallableModelSample(samples::DataFrame, permutations::Matrix{Int64})
+
+    Wrap an already pick-freeze-shaped `samples`/`permutations` pair — e.g. reconstructed
+    from an external pipeline — as a `CallableModelSample`, instead of passing them to
+    [`analyze`](@ref) directly as loose arguments. Not validated: `samples` is trusted to
+    already have the `_generate_samples` block structure `analyze` assumes.
+    """
+    function CallableModelSample(samples::DataFrame, permutations::Matrix{Int64})
+        return new(samples, permutations)
+    end
 
     function CallableModelSample(problem::CallableModel)
         X, p = _generate_samples(problem.X1, problem.X2, problem.permutations)
@@ -170,8 +182,7 @@ struct CallableModelSample
 end
 
 """
-    analyze(s_model::CallableModel)
-    analyze(X::DataFrame, Y::Vector, perms::Matrix)
+    analyze(model::CallableModel)
     analyze(S::CallableModelSample, Y::Vector)
 
 TODO Rename `analyze` to `shapley_effect`?
@@ -180,34 +191,37 @@ Dependent factors are handled at sampling time: build the samples with
 `CallableModelSample(X1, X2; conditional_sampler=...)`, run the model over `S.samples`, then call
 `analyze(S, Y)`.
 
+Already have `X` and `perms` built some other way (not via a `CallableModelSample`
+constructor)? Wrap them first — `CallableModelSample(X, perms)` — rather than calling
+`analyze` on loose arguments; there is no workflow that unlocks that `CallableModelSample`
+doesn't already cover.
+
 # Arguments
-- `s_model` : SAShE CallableModel
+- `model` : SAShE CallableModel
 - `S` : SAShE sample
 - `Y` : Resulting outputs from `X`
-- `X` : Inputs used to run target model
-- `perms` : Permutation order
 
 # Returns
 Tuple, of Φₙ and Φₙ² (Shapley Effect and variance) or tuple of matrices Φₙ, Φ²ₙ, Yₙ, with:
 
     - Φₙ : Shapley effects for base samples (size `N`)
     - Φ²ₙ : Variance of Shapley effects used to estimate confidence bounds
-    - Yₙ : Model run results the parameters `s_model.X1`
+    - Yₙ : Model run results the parameters `model.X1`
 """
-function analyze(s_model::CallableModel)
-    n_samples = s_model.n_samples
+function analyze(model::CallableModel)
+    n_samples = model.n_samples
 
     res = @showprogress pmap(
         _shapley_effect_iteration,
-        repeated(s_model.func, n_samples),
-        eachrow(s_model.X1),
-        eachrow(s_model.X2),
-        eachrow(s_model.permutations),
-        eachrow(s_model.Y⁻),
-        eachrow(s_model.Y⁺),
-        eachrow(s_model.Φ_increments),
-        eachrow(s_model.Φ²_increments),
-        repeated(s_model.n_samples, n_samples),
+        repeated(model.func, n_samples),
+        eachrow(model.X1),
+        eachrow(model.X2),
+        eachrow(model.permutations),
+        eachrow(model.Y⁻),
+        eachrow(model.Y⁺),
+        eachrow(model.Φ_increments),
+        eachrow(model.Φ²_increments),
+        repeated(model.n_samples, n_samples),
     )
 
     # TODO Return a better object, either a `Solution` or a new version of `CallableModel`
@@ -215,9 +229,7 @@ function analyze(s_model::CallableModel)
 end
 function analyze(S::CallableModelSample, Y::Vector)
     X = S.samples
-    return analyze(X, Y, S.permutations)
-end
-function analyze(X::DataFrame, Y::Vector, perms::Matrix)
+    perms = S.permutations
     n_var_params = size(X, 2)
     n_base_samples = size(perms, 1)
 

@@ -15,7 +15,7 @@ table:
 | :-- | :---------- | :--------- | :------- |
 | `CallableModel` + `analyze(model)` | function, `X1`, `X2` | samples **and** runs the model | the model is cheap and in-process |
 | `CallableModelSample` + `analyze(S, Y)` | `X1`, `X2`; you run the model over `S.samples` | builds `Z` and `π` | custom batching, checkpointing, HPC / remote runs |
-| manual + `analyze(X, Y, perms)` | everything, including `Z` and `permutations` | analysis only | doing something unusual to `Z` |
+| `CallableModelSample(X, perms)` + `analyze(S, Y)` | everything, including `Z` and `permutations` | analysis only | doing something unusual to `Z` |
 
 ### Dependent factors (how-to) — the important one
 
