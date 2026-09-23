@@ -18,6 +18,15 @@ This costs **zero new evaluations** — appropriate when there is no model to ca
 calling one is prohibitively expensive — at the cost of some estimator variance from the
 nearest-neighbour approximation itself, on top of the usual Monte Carlo sampling variance.
 
+Within one `analyze` call, repeated `(reference row, coalition)` pairs are cached
+automatically — there's nothing to configure. With `n_permutations` in the thousands this
+matters: there are only `2^d - 2` non-trivial coalitions for `d` factors, so the same pair
+recurs often, and each one now triggers at most one nearest-neighbour search. One
+consequence: this makes `analyze` skip randomness that a cache miss would have consumed, so
+the exact numbers for a given `rng` seed can differ from an older SAShE.jl version — the
+estimator's statistical behaviour is unchanged, only which specific pseudo-random draws get
+used.
+
 ## 1. Build (or load) the dataset
 
 Any table of `(X, Y)` observations works. Here, one is generated from the
