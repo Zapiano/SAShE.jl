@@ -17,7 +17,7 @@ struct DataModel
 end
 
 """
-    analyze(model::DataModel, n_permutations::Integer; rng=default_rng())::Tuple{Matrix{Float64},Matrix{Float64}}
+    analyze(model::DataModel, n_permutations::Integer; estimator::EstimationMethod=PickAndFreeze(), rng=default_rng())::Tuple{Matrix{Float64},Matrix{Float64}}
 
 Estimate Shapley effects from a fixed dataset `(X, Y)` alone — no callable model, no
 joint-distribution model — using [1]'s nearest-neighbour "knn" Pick-and-Freeze estimator
@@ -36,6 +36,8 @@ Shapley-effect contribution.
 - `model` : The dataset to analyze, wrapped in a [`DataModel`](@ref).
 - `n_permutations` : Number of random permutations to average over — an accuracy/budget
   knob; more permutations means lower estimator variance.
+- `estimator` : Estimation method (keyword, optional) — see [`EstimationMethod`](@ref).
+  Defaults to, and for now is the only implemented, [`PickAndFreeze`](@ref).
 - `rng` : Random number generator (keyword, optional).
 
 # Returns
@@ -45,7 +47,13 @@ returns — pass to [`shapley_effects`](@ref) or [`confint`](@ref) as usual.
 See the [References](@ref) page for the full citations behind [1] and [2].
 """
 function analyze(
-    model::DataModel, n_permutations::Integer; rng::AbstractRNG=default_rng()
+    model::DataModel, n_permutations::Integer;
+    estimator::EstimationMethod=PickAndFreeze(), rng::AbstractRNG=default_rng(),
+)::Tuple{Matrix{Float64}, Matrix{Float64}}
+    return _analyze(model, n_permutations, estimator; rng=rng)
+end
+function _analyze(
+    model::DataModel, n_permutations::Integer, ::PickAndFreeze; rng::AbstractRNG=default_rng()
 )::Tuple{Matrix{Float64}, Matrix{Float64}}
     Xm = Matrix(model.X)
     Y = model.Y
