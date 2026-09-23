@@ -105,3 +105,27 @@ end
 
     @test_throws ArgumentError SAShE.analyze(DataModel(X, Y), 10)
 end
+
+@testset "DataModel: coalition-value cache avoids redundant nearest-neighbour lookups" begin
+    n_samples = 200
+    Xm = randn(n_samples, 4)
+    Y = collect(sum.(eachrow(Xm)))
+    Ȳ = mean(Y)
+
+    cache = Dict{Tuple{Int64, Vector{Int64}}, Float64}()
+    rng = Xoshiro(5)
+
+    v1 = SAShE._cached_nearest_neighbour_pick_freeze(cache, Xm, Y, Ȳ, 1, [2, 3]; rng=rng)
+    rng_after_first_call = copy(rng)
+
+    # Same coalition, different insertion order -- must hit the cache (same set).
+    v2 = SAShE._cached_nearest_neighbour_pick_freeze(cache, Xm, Y, Ȳ, 1, [3, 2]; rng=rng)
+    @test v1 == v2
+    @test rng == rng_after_first_call  # a cache hit must not consume any randomness
+
+    # Different reference point -- must NOT hit the cache.
+    SAShE._cached_nearest_neighbour_pick_freeze(cache, Xm, Y, Ȳ, 2, [2, 3]; rng=rng)
+    @test rng != rng_after_first_call  # a real computation happened, rng advanced
+
+    @test length(cache) == 2
+end

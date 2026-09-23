@@ -64,6 +64,12 @@ function _analyze(
     Φₙ_increments = zeros(n_factors, n_permutations)
     Φₙ²_increments = zeros(n_factors, n_permutations)
 
+    # Coalitions recur across permutations (there are only 2^n_factors - 2 non-trivial
+    # ones), and with n_permutations in the thousands, so does the reference row `s` — this
+    # cache means each distinct (s, coalition) pair only ever triggers one nearest-neighbour
+    # search, not one per permutation that happens to walk through it.
+    cache = Dict{Tuple{Int64, Vector{Int64}}, Float64}()
+
     for m ∈ 1:n_permutations
         σ = randperm(rng, n_factors)
         s = rand(rng, 1:n_samples)
@@ -75,7 +81,7 @@ function _analyze(
             W = if i == n_factors
                 var_y
             else
-                _nearest_neighbour_pick_freeze(Xm, Y, Ȳ, s, u; rng=rng)
+                _cached_nearest_neighbour_pick_freeze(cache, Xm, Y, Ȳ, s, u; rng=rng)
             end
 
             Δ = W - prevW
@@ -122,4 +128,24 @@ function _nearest_neighbour_pick_freeze(
     N_I = 2
     idx = _nearest_neighbour_indices(X, s, u, N_I; rng=rng)
     return Y[idx[1]] * Y[idx[2]] - Ȳ^2
+end
+
+"""
+    _cached_nearest_neighbour_pick_freeze(cache, X, Y, Ȳ, s, u; rng=default_rng())::Float64
+
+[`_nearest_neighbour_pick_freeze`](@ref), memoized in `cache` on `(s, coalition)`. The
+coalition is stored sorted, not in the order `u` was built in — the underlying
+nearest-neighbour search is a symmetric function of the coordinate *set*, so two calls
+with the same `s` and the same factors in `u`, in any order, must return the same value.
+`cache` is a plain `Dict`, expected to be freshly created per top-level `analyze` call.
+"""
+function _cached_nearest_neighbour_pick_freeze(
+    cache::Dict{Tuple{Int64, Vector{Int64}}, Float64},
+    X::AbstractMatrix, Y::AbstractVector{<:Real}, Ȳ::Real, s::Integer,
+    u::AbstractVector{<:Integer}; rng::AbstractRNG=default_rng(),
+)::Float64
+    key = (Int64(s), sort(collect(u)))
+    return get!(cache, key) do
+        _nearest_neighbour_pick_freeze(X, Y, Ȳ, s, u; rng=rng)
+    end
 end
