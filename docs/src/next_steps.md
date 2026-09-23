@@ -14,8 +14,8 @@ table:
 | Way | You provide | SAShE does | Use when |
 | :-- | :---------- | :--------- | :------- |
 | `CallableModel` + `analyze(model)` | function, `X1`, `X2` | samples **and** runs the model | the model is cheap and in-process |
-| `CallableModelSample` + `analyze(S, Y)` | `X1`, `X2`; you run the model over `S.samples` | builds `Z` and `π` | custom batching, checkpointing, HPC / remote runs |
-| `CallableModelSample(X, perms)` + `analyze(S, Y)` | everything, including `Z` and `permutations` | analysis only | doing something unusual to `Z` |
+| `PickAndFreezeSample` + `analyze(S, Y)` | `X1`, `X2`; you run the model over `S.samples` | builds `Z` and `π` | custom batching, checkpointing, HPC / remote runs |
+| `PickAndFreezeSample(X, perms)` + `analyze(S, Y)` | everything, including `Z` and `permutations` | analysis only | doing something unusual to `Z` |
 
 ### Dependent factors (how-to) — the important one
 
@@ -48,11 +48,11 @@ table:
 ### Reproducibility (explanation)
 
 Seeding, `Distributed` / `pmap` and per-worker RNG, why deterministic conditional samplers
-matter, quasi-Monte Carlo permutations via `CallableModelSample(names, X, sampler)`.
+matter, quasi-Monte Carlo permutations via `PickAndFreezeSample(names, X, sampler)`.
 
 ### API reference
 
-Add `docs/src/api.md` with a `@docs` block for `CallableModel`, `CallableModelSample`, `analyze`,
+Add `docs/src/api.md` with a `@docs` block for `CallableModel`, `PickAndFreezeSample`, `analyze`,
 `SAShE.shapley_effects`, `SAShE.confint`, `SAShE.margin_of_error`, `generate_permutations`.
 Then set `checkdocs = :exports` (or `:all`) in `docs/make.jl` and drop the `:none`
 override.

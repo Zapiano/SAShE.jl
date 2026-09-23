@@ -62,11 +62,11 @@ struct CallableModel
 end
 
 """
-    CallableModelSample(factor_names::Union{Vector{String},Vector{Symbol}}, n_samples::Int64, factor_dist::Vector)
-    CallableModelSample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix)
-    CallableModelSample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix, sampler)
-    CallableModelSample(A::DataFrame, B::DataFrame; conditional_sampler=nothing)
-    CallableModelSample(A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing)
+    PickAndFreezeSample(factor_names::Union{Vector{String},Vector{Symbol}}, n_samples::Int64, factor_dist::Vector)
+    PickAndFreezeSample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix)
+    PickAndFreezeSample(factor_names::Union{Vector{String},Vector{Symbol}}, samples::Matrix, sampler)
+    PickAndFreezeSample(A::DataFrame, B::DataFrame; conditional_sampler=nothing)
+    PickAndFreezeSample(A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing)
 
 SAShE samples (`X`) and permutations (`π`).
 
@@ -94,31 +94,31 @@ A = DataFrame(rand(du, n_samples, n_factors), factor_names)
 B = DataFrame(rand(du, n_samples, n_factors), factor_names)
 permutations = ...
 
-S_x = CallableModelSample(A, B, permutations)
+S_x = PickAndFreezeSample(A, B, permutations)
 Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
 Φₙ, Φ²ₙ = analyze(S_x, Y)
 
 # With pre-defined samples (halved and split into `A` and `B`)
 X = Matrix(QMC.sample(2048, fill(-π, 3), fill(Float64(π), 3), Uniform())')
-S_x = CallableModelSample([:x1, :x2, :x3], X)
+S_x = PickAndFreezeSample([:x1, :x2, :x3], X)
 Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
 Φₙ, Φ²ₙ = analyze(S_x, Y)
 
 # With a given sampler to create custom permutations
 X = Matrix(QMC.sample(2048, fill(-π, 3), fill(Float64(π), 3), Uniform())')
-S_x = CallableModelSample([:x1, :x2, :x3], X, QMC.LatinHypercubeSample())
+S_x = PickAndFreezeSample([:x1, :x2, :x3], X, QMC.LatinHypercubeSample())
 Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
 Φₙ, Φ²ₙ = analyze(S_x, Y)
 
 # With dependent factors: redraw resampled factors conditional on the frozen ones
-S_x = CallableModelSample(A, B; conditional_sampler=my_conditional_sampler)
+S_x = PickAndFreezeSample(A, B; conditional_sampler=my_conditional_sampler)
 Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
 Φₙ, Φ²ₙ = analyze(S_x, Y)
 ```
 
 $(FIELDS)
 """
-struct CallableModelSample
+struct PickAndFreezeSample
     "SAShE samples"
     samples::DataFrame
 
@@ -126,22 +126,22 @@ struct CallableModelSample
     permutations::Matrix{Int64}
 
     """
-        CallableModelSample(samples::DataFrame, permutations::Matrix{Int64})
+        PickAndFreezeSample(samples::DataFrame, permutations::Matrix{Int64})
 
     Wrap an already pick-freeze-shaped `samples`/`permutations` pair — e.g. reconstructed
-    from an external pipeline — as a `CallableModelSample`, instead of passing them to
+    from an external pipeline — as a `PickAndFreezeSample`, instead of passing them to
     [`analyze`](@ref) directly as loose arguments. Not validated: `samples` is trusted to
     already have the `_generate_samples` block structure `analyze` assumes.
     """
-    function CallableModelSample(samples::DataFrame, permutations::Matrix{Int64})
+    function PickAndFreezeSample(samples::DataFrame, permutations::Matrix{Int64})
         return new(samples, permutations)
     end
 
-    function CallableModelSample(problem::CallableModel)
+    function PickAndFreezeSample(problem::CallableModel)
         X, p = _generate_samples(problem.X1, problem.X2, problem.permutations)
         return new(X, p)
     end
-    function CallableModelSample(
+    function PickAndFreezeSample(
         factor_names::Union{Vector{String}, Vector{Symbol}},
         n_samples::Int64,
         factor_dist::Vector,
@@ -150,14 +150,14 @@ struct CallableModelSample
         return new(X, p)
     end
 
-    function CallableModelSample(
+    function PickAndFreezeSample(
         factor_names::Union{Vector{String}, Vector{Symbol}}, samples::Matrix
     )
         X, p = create_sample(factor_names, samples)
         return new(X, p)
     end
 
-    function CallableModelSample(
+    function PickAndFreezeSample(
         factor_names::Union{Vector{String}, Vector{Symbol}}, samples::Matrix, sampler
     )
         A, B = _even_split(factor_names, samples)
@@ -165,12 +165,12 @@ struct CallableModelSample
         return new(X, p)
     end
 
-    function CallableModelSample(A::DataFrame, B::DataFrame; conditional_sampler=nothing)
+    function PickAndFreezeSample(A::DataFrame, B::DataFrame; conditional_sampler=nothing)
         permutations = generate_permutations(size(A)...)
-        return CallableModelSample(A, B, permutations; conditional_sampler=conditional_sampler)
+        return PickAndFreezeSample(A, B, permutations; conditional_sampler=conditional_sampler)
     end
 
-    function CallableModelSample(
+    function PickAndFreezeSample(
         A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing
     )
         X, p = _generate_samples(A, B, permutations)
@@ -183,17 +183,17 @@ end
 
 """
     analyze(model::CallableModel; estimator::EstimationMethod=PickAndFreeze())
-    analyze(S::CallableModelSample, Y::Vector; estimator::EstimationMethod=PickAndFreeze())
+    analyze(S::PickAndFreezeSample, Y::Vector; estimator::EstimationMethod=PickAndFreeze())
 
 TODO Rename `analyze` to `shapley_effect`?
 
 Dependent factors are handled at sampling time: build the samples with
-`CallableModelSample(X1, X2; conditional_sampler=...)`, run the model over `S.samples`, then call
+`PickAndFreezeSample(X1, X2; conditional_sampler=...)`, run the model over `S.samples`, then call
 `analyze(S, Y)`.
 
-Already have `X` and `perms` built some other way (not via a `CallableModelSample`
-constructor)? Wrap them first — `CallableModelSample(X, perms)` — rather than calling
-`analyze` on loose arguments; there is no workflow that unlocks that `CallableModelSample`
+Already have `X` and `perms` built some other way (not via a `PickAndFreezeSample`
+constructor)? Wrap them first — `PickAndFreezeSample(X, perms)` — rather than calling
+`analyze` on loose arguments; there is no workflow that unlocks that `PickAndFreezeSample`
 doesn't already cover.
 
 # Arguments
@@ -214,7 +214,7 @@ function analyze(model::CallableModel; estimator::EstimationMethod=PickAndFreeze
     return _analyze(model, estimator)
 end
 function analyze(
-    S::CallableModelSample, Y::Vector; estimator::EstimationMethod=PickAndFreeze()
+    S::PickAndFreezeSample, Y::Vector; estimator::EstimationMethod=PickAndFreeze()
 )
     return _analyze(S, Y, estimator)
 end
@@ -238,7 +238,7 @@ function _analyze(model::CallableModel, ::PickAndFreeze)
     # TODO Return a better object, either a `Solution` or a new version of `CallableModel`
     return hcat([r[1] for r ∈ res]...), hcat([r[2] for r ∈ res]...), [r[3] for r ∈ res]
 end
-function _analyze(S::CallableModelSample, Y::Vector, ::PickAndFreeze)
+function _analyze(S::PickAndFreezeSample, Y::Vector, ::PickAndFreeze)
     X = S.samples
     perms = S.permutations
     n_var_params = size(X, 2)

@@ -41,7 +41,7 @@ Shapley-effect contribution.
 - `rng` : Random number generator (keyword, optional).
 
 # Returns
-Tuple `(Φₙ, Φ²ₙ)`, in the same shape as [`analyze(S::CallableModelSample, Y::Vector)`](@ref)
+Tuple `(Φₙ, Φ²ₙ)`, in the same shape as [`analyze(S::PickAndFreezeSample, Y::Vector)`](@ref)
 returns — pass to [`shapley_effects`](@ref) or [`confint`](@ref) as usual.
 
 See the [References](@ref) page for the full citations behind [1] and [2].

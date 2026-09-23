@@ -12,7 +12,7 @@ include("data_model.jl")
 include("mix_model.jl")
 include("shapley_effects.jl")
 
-export CallableModel, CallableModelSample, DataModel, MixModel
+export CallableModel, PickAndFreezeSample, DataModel, MixModel
 export EstimationMethod, PickAndFreeze
 export analyze
 export generate_permutations

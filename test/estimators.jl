@@ -15,7 +15,7 @@
     @test Φₙ_a == Φₙ_b
     @test Φ²ₙ_a == Φ²ₙ_b
 
-    S = CallableModelSample(X1, X2)
+    S = PickAndFreezeSample(X1, X2)
     Y = map(row -> ishigami(collect(row)), eachrow(S.samples))
     @test analyze(S, Y) == analyze(S, Y; estimator=PickAndFreeze())
 

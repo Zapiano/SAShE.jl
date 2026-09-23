@@ -31,7 +31,7 @@ end
 end
 
 
-@testset "Correctness of CallableModelSample assessment" begin
+@testset "Correctness of PickAndFreezeSample assessment" begin
     factor_names = [:x1, :x2, :x3]
     n_samples = 1024
     n_factors = length(factor_names)
@@ -53,8 +53,8 @@ end
     # Compare model variance with sum of Shapley Effects
     @test min(var(Yₙ), sum(Φ)) / max(var(Yₙ), sum(Φ)) > 0.95 || "Ishigami did not converge"
 
-    # S_x = CallableModelSample(samples1, samples2, sa_problem.permutations)
-    S_x = CallableModelSample(sa_problem)
+    # S_x = PickAndFreezeSample(samples1, samples2, sa_problem.permutations)
+    S_x = PickAndFreezeSample(sa_problem)
     Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
     Φₙ, Φ²ₙ = SAShE.analyze(S_x, Y)
     Φ2, Φlb2, Φub2 = SAShE.shapley_effects(Φₙ, Φ²ₙ)

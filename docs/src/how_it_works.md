@@ -28,7 +28,7 @@ instead of `3d`.
 `PickAndFreeze()` (the algorithm this page describes), which is also the default, so
 existing calls don't need to change. It exists as an extension point: other estimation
 methods are expected to land behind the same keyword later, without changing how you build
-or call `CallableModel`, `CallableModelSample`, or `DataModel`.
+or call `CallableModel`, `PickAndFreezeSample`, or `DataModel`.
 
 ```julia
 Φₙ, Φ²ₙ, Yₙ = analyze(model; estimator=PickAndFreeze())   # equivalent to analyze(model)
@@ -37,7 +37,7 @@ or call `CallableModel`, `CallableModelSample`, or `DataModel`.
 ## Permutations
 
 For `N` base samples SAShE draws an `N × d` matrix `π`, one random factor ordering per row.
-`generate_permutations(N, d)` produces it; `CallableModel` and `CallableModelSample` do this for you
+`generate_permutations(N, d)` produces it; `CallableModel` and `PickAndFreezeSample` do this for you
 and store it, so the sampling and the analysis always use the same orderings.
 
 ## What is `Z`?
@@ -78,14 +78,14 @@ model = CallableModel(f, X1, X2)
 **Drive it yourself** — build the sample, run the model however you like, hand back `Y`:
 
 ```julia
-S = CallableModelSample(X1, X2)               # Z is S.samples; π is S.permutations
+S = PickAndFreezeSample(X1, X2)               # Z is S.samples; π is S.permutations
 Y = map(row -> f(collect(row)), eachrow(S.samples))
 Φₙ, Φ²ₙ = analyze(S, Y)
 ```
 
 The second form is what you want when the model evaluation needs its own batching,
 checkpointing, or a compute cluster — or when the factors are dependent and `Z` needs to be
-conditionally resampled (`CallableModelSample(X1, X2; conditional_sampler = ...)`). A dedicated
+conditionally resampled (`PickAndFreezeSample(X1, X2; conditional_sampler = ...)`). A dedicated
 guide for the dependent case is in [Next steps](@ref).
 
 ## What `analyze` returns
