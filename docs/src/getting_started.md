@@ -67,12 +67,12 @@ one is a function of the others), the sampling needs an extra step — see [Next
 
 ## 3. Run the analysis
 
-Wrap the model in a `CallableModel`, build a `PickAndFreezeSample` from your two sample
+Wrap the model in a `CallableModel`, build a `CallablePickAndFreezeSample` from your two sample
 sets, then `analyze` them together — `analyze` always takes a model and a sample:
 
 ```@example gs
 model = CallableModel(ishigami)
-S = PickAndFreezeSample(X1, X2)
+S = CallablePickAndFreezeSample(X1, X2)
 Φₙ, Φ²ₙ, Yₙ = analyze(model, S)
 nothing # hide
 ```

@@ -25,16 +25,12 @@ end
     @test_throws ArgumentError DataModel(X, Y)
 end
 
-@testset "MixModel: constructs, has no estimator yet" begin
-    factor_names = [:x1, :x2, :x3]
-    n_samples, n_factors = 20, length(factor_names)
-    du = Uniform(-π, π)
+@testset "MixModel: constructs" begin
+    # MixModel wraps only func, like CallableModel -- no X/Y to validate here; see
+    # test/mix_model.jl for MixPickAndFreezeSample/MixDoubleMonteCarloSample's coverage of
+    # that (they hold the dataset), and for analyze's dispatch-by-sample-type behaviour.
     ishigami(x) = (1 + 0.1x[3]^4) * sin(x[1]) + 7 * sin(x[2])^2
-
-    X = DataFrame(rand(du, n_samples, n_factors), factor_names)
-    Y = map(row -> ishigami(collect(row)), eachrow(X))
-
-    mm = MixModel(ishigami, X, Y)
+    mm = MixModel(ishigami)
     @test mm.func === ishigami
     @test_throws MethodError SAShE.analyze(mm)
 end

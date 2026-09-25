@@ -33,13 +33,13 @@ communicate.
     </tr>
     <tr>
       <td>Model, inputs sampled from a known distribution (independent or dependent)</td>
-      <td><code>CallableModel</code> + <code>PickAndFreezeSample</code></td>
-      <td><code>CallableModel</code> + <code>DoubleMonteCarloSample</code> (independent factors only)</td>
+      <td><code>CallableModel</code> + <code>CallablePickAndFreezeSample</code></td>
+      <td><code>CallableModel</code> + <code>CallableDoubleMonteCarloSample</code> (independent factors only)</td>
     </tr>
     <tr>
       <td>Model, inputs are real data with an unknown distribution ("mix")</td>
-      <td>🔲 Planned</td>
-      <td>🔲 Planned</td>
+      <td><code>MixModel</code> + <code>MixPickAndFreezeSample</code></td>
+      <td><code>MixModel</code> + <code>MixDoubleMonteCarloSample</code></td>
     </tr>
     <tr>
       <td>No model — both inputs and output are real data</td>
@@ -53,16 +53,20 @@ communicate.
 Every case runs through `analyze(model, sample)` — a model describing what you have, and a
 sample describing how to draw or evaluate it — except `DataModel`, which has no separate
 sampling step and takes the estimator as an explicit third argument instead (no default),
-since one container serves both algorithms there. `CallableModel` + `PickAndFreezeSample` is
+since one container serves both algorithms there. `CallableModel` + `CallablePickAndFreezeSample` is
 [4]'s simple Monte Carlo
 estimator — see [References](@ref) — it estimates every factor's Shapley effect
 simultaneously at a cost of `N·(d + 1)` model evaluations (`N` samples, `d` factors),
 together with unbiased confidence intervals; see [How it works](@ref). `DataModel`'s
 pick-and-freeze estimator reuses values already present in the dataset instead — zero new
-evaluations; see [Dataset-only workflow](@ref). `CallableModel` + `DoubleMonteCarloSample`
+evaluations; see [Dataset-only workflow](@ref). `CallableModel` + `CallableDoubleMonteCarloSample`
 is [2]'s nested-sampling estimator — genuinely new model evaluations, at a different cost
 from pick-and-freeze; see [How it works](@ref) and the [Examples](@ref) page for a worked
-comparison.
+comparison. `MixModel` sits between the two: a callable model, but nearest-neighbour lookups
+into an existing dataset — rather than a known distribution — pick which new points to
+evaluate it at; see [1]'s "mix" estimators. Its samples (`MixPickAndFreezeSample`,
+`MixDoubleMonteCarloSample`) hold that dataset alongside the pre-drawn permutations, the same
+way `CallablePickAndFreezeSample`/`CallableDoubleMonteCarloSample` do for `CallableModel`.
 
 ## Installation
 
@@ -86,7 +90,7 @@ X1 = DataFrame(rand(d, 2000, 3), [:x1, :x2, :x3])
 X2 = DataFrame(rand(d, 2000, 3), [:x1, :x2, :x3])
 
 model = CallableModel(ishigami)
-S = PickAndFreezeSample(X1, X2)
+S = CallablePickAndFreezeSample(X1, X2)
 Φₙ, Φ²ₙ, Yₙ = analyze(model, S)
 
 Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)

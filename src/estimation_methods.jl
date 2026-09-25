@@ -14,8 +14,8 @@ abstract type EstimationMethod end
 The pick-and-freeze estimation method — pass explicitly to [`DataModel`](@ref)'s `analyze`
 to reuse values already present in the dataset (no new function evaluations). For a
 [`CallableModel`](@ref), pick-and-freeze is selected implicitly by pairing it with a
-[`PickAndFreezeSample`](@ref) — there is no separate estimator argument there, since the
-sample's type already determines which method runs.
+[`CallablePickAndFreezeSample`](@ref) — there is no separate estimator argument there, since
+the sample's type already determines which method runs.
 """
 struct PickAndFreeze <: EstimationMethod end
 
@@ -25,8 +25,9 @@ struct PickAndFreeze <: EstimationMethod end
 The double (nested) Monte Carlo estimation method of [2], §4.1, Algorithm 1 — estimates
 each coalition's cost via a genuinely new inner/outer sampling procedure, rather than
 reusing paired samples. For a [`CallableModel`](@ref), this is selected implicitly by
-pairing it with a [`DoubleMonteCarloSample`](@ref), built from per-factor distributions
-since it draws far more samples than pick-and-freeze's paired-sample table holds.
+pairing it with a [`CallableDoubleMonteCarloSample`](@ref), built from per-factor
+distributions since it draws far more samples than pick-and-freeze's paired-sample table
+holds.
 
 !!! note "No `analyze` method dispatches on this singleton yet"
     Because the `CallableModel` path selects double Monte Carlo from the *sample's* type, and
