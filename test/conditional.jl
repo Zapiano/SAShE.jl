@@ -1,6 +1,4 @@
-function ishigami(X::Vector{Float64}; a::Float64=7.0, b::Float64=0.1)
-    return (1 + b * X[3]^4) * sin(X[1]) + a * (sin(X[2]))^2
-end
+# `ishigami` comes from test/reference_values.jl.
 
 # Dependency: x3 = x1 + x2, with x1, x2 ~ Uniform(-π, π) independently.
 function conditional_sampling(X1_param_idx, X2_param_idx, X1, X2)
@@ -68,10 +66,9 @@ end
     @test all(isapprox.(S_auto.samples.x3, S_auto.samples.x1 .+ S_auto.samples.x2; atol=1e-9))
 
     # ... and the downstream Shapley-effect analysis is identical.
-    Y_auto = map(x -> ishigami(collect(x)), eachrow(S_auto.samples))
-    Y_manual = map(x -> ishigami(collect(x)), eachrow(S_manual.samples))
-    Φₙ_auto, Φ²ₙ_auto = SAShE.analyze(S_auto, Y_auto)
-    Φₙ_manual, Φ²ₙ_manual = SAShE.analyze(S_manual, Y_manual)
+    m = SAShE.CallableModel(ishigami)
+    Φₙ_auto, Φ²ₙ_auto, _ = SAShE.analyze(m, S_auto)
+    Φₙ_manual, Φ²ₙ_manual, _ = SAShE.analyze(m, S_manual)
     @test Φₙ_auto == Φₙ_manual
     @test Φ²ₙ_auto == Φ²ₙ_manual
 end
