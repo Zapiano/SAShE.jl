@@ -14,11 +14,11 @@ never holds sample data, and the sample never holds the model:
 
 | You build | `analyze` runs | Use when |
 | :-- | :--------- | :------- |
-| `PickAndFreezeSample(X1, X2)` | pick-and-freeze — `analyze(model, S)` | independent factors, known distribution |
-| `PickAndFreezeSample(names, n, dists, MonteCarloSampling())` | pick-and-freeze, with `A`/`B` drawn for you | you have per-factor distributions rather than pre-built `X1`/`X2` |
-| `PickAndFreezeSample(X1, X2; conditional_sampler=...)` | pick-and-freeze, dependent factors | some factors depend on others |
-| `PickAndFreezeSample(X, perms)` | pick-and-freeze over an already-built sample table | any other custom sampling scheme, e.g. QMC-derived permutations |
-| `DoubleMonteCarloSample(names, dists, m, strategy)` | double Monte Carlo — `analyze(model, S)` | independent factors, want lower variance per evaluation |
+| `CallablePickAndFreezeSample(X1, X2)` | pick-and-freeze — `analyze(model, S)` | independent factors, known distribution |
+| `CallablePickAndFreezeSample(names, n, dists, MonteCarloSampling())` | pick-and-freeze, with `A`/`B` drawn for you | you have per-factor distributions rather than pre-built `X1`/`X2` |
+| `CallablePickAndFreezeSample(X1, X2; conditional_sampler=...)` | pick-and-freeze, dependent factors | some factors depend on others |
+| `CallablePickAndFreezeSample(X, perms)` | pick-and-freeze over an already-built sample table | any other custom sampling scheme, e.g. QMC-derived permutations |
+| `CallableDoubleMonteCarloSample(names, dists, m, strategy)` | double Monte Carlo — `analyze(model, S)` | independent factors, want lower variance per evaluation |
 
 ### Dependent factors (how-to) — the important one
 
@@ -51,15 +51,8 @@ never holds sample data, and the sample never holds the model:
 ### Reproducibility (explanation)
 
 Seeding, `Distributed` / `pmap` and per-worker RNG, why deterministic conditional samplers
-matter, and custom sampling schemes via `PickAndFreezeSample(samples, perms)` — build the
+matter, and custom sampling schemes via `CallablePickAndFreezeSample(samples, perms)` — build the
 table yourself, then wrap it directly.
-
-### API reference
-
-Add `docs/src/api.md` with a `@docs` block for `CallableModel`, `PickAndFreezeSample`, `analyze`,
-`SAShE.shapley_effects`, `SAShE.confint`, `SAShE.margin_of_error`, `generate_permutations`.
-Then set `checkdocs = :exports` (or `:all`) in `docs/make.jl` and drop the `:none`
-override.
 
 ## Infrastructure
 

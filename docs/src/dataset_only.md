@@ -64,19 +64,24 @@ works unchanged.
 [Φlb Φ Φub]
 ```
 
-## 4. Sanity check: do they sum to the variance?
+## 4. `sum(Φ)` vs. the variance
 
 ```@example dataset_only
 sum(Φ), var(Y)
 ```
 
-If these disagree by more than a few percent, increase the number of permutations (or, if
-the dataset itself is small relative to `n_factors`, the nearest-neighbour lookups may be
-too coarse — a larger dataset helps here too).
+Unlike the equivalent step for `CallableModel` (see [Getting started](@ref)), this is **not**
+a sanity check you can act on: `analyze`'s random-permutation walk ends every permutation at
+`var(Y)` directly, computed from the dataset rather than from the nearest-neighbour
+estimator being tested, so `sum(Φ)` equals `var(Y)` exactly (up to floating point) no matter
+how many permutations you use or how good the nearest-neighbour lookups are — see
+[Deliberate deviations](@ref). A mismatch here points to a bug in this package, not in your
+data or parameters.
 
 ## Caveats
 
-- **The neighbour count is fixed at 1**, not a tunable accuracy knob. `V_u = Var(E(Y|X_u))`
+- **The neighbour count is fixed** — one neighbour besides the query point itself, which is
+  [1]'s `N_I = 2` (§6.1.2) — not a tunable accuracy knob. `V_u = Var(E(Y|X_u))`
   is recovered via `E(E(Y|X_u)²) = E(f(X)f(X^u))` ([1]'s Proposition 2), which holds only
   because it multiplies exactly *two* conditionally-independent draws sharing the same
   conditional mean `Z = E(Y|X_u)` — the standard `E[Z₁Z₂] = Z²` trick for an unbiased
@@ -85,10 +90,17 @@ too coarse — a larger dataset helps here too).
   neighbour's. Multiplying three or more draws together would estimate a different, wrong
   quantity, not a more accurate `V_u`. Increasing dataset size or permutation count are the
   available ways to reduce estimator variance instead.
-- **Distance is standardized Euclidean** by default (each coordinate z-scored before
-  comparing) — unweighted Euclidean distance would otherwise let whichever coordinate has
-  the largest variance dominate the search. This accounts for scale but not correlation
-  between coordinates (a Mahalanobis-distance option, accounting for both, is planned).
+- **Distance is standardized Euclidean** by default (each coordinate divided by its own
+  standard deviation before comparing — divided, not centred, since Euclidean distance is
+  translation-invariant, so the coordinates are not z-scores) — unweighted Euclidean distance
+  would otherwise let whichever coordinate has the largest variance dominate the search. This
+  accounts for scale but not correlation between coordinates (a Mahalanobis-distance option,
+  accounting for both, is planned).
+- **The confidence intervals are anti-conservative here.** `margin_of_error` assumes each
+  permutation is an independent draw, which [1] §6.2 explicitly notes is false for this
+  estimator — every permutation reuses the same dataset. Adding permutations shrinks the
+  reported interval but not the nearest-neighbour error floor it cannot see, so treat the
+  interval as a lower bound on uncertainty. See [Deliberate deviations](@ref).
 - Only continuous/discrete numerical inputs are supported; categorical inputs are not yet.
 - This estimator's convergence and the assumptions behind it are set out in [1] §6 — in
   particular Theorem 4 for its rate, and §6.2 for how the conditional elements are aggregated.
