@@ -5,7 +5,7 @@ using DataFrames, Distributed, ProgressMeter
 
 using DocStringExtensions
 
-include("estimators.jl")
+include("estimation_methods.jl")
 include("sampling_strategies.jl")
 include("samplers.jl")
 include("callable_model.jl")
