@@ -8,14 +8,17 @@ session.
 
 ### Workflows (how-to)
 
-Promote the "two ways" section of [How it works](@ref) to its own page with a decision
-table:
+Promote the "model and sample, always together" section of [How it works](@ref) to its own
+page. `analyze` always takes a model and a sample built independently — `CallableModel`
+never holds sample data, and the sample never holds the model:
 
-| Way | You provide | SAShE does | Use when |
-| :-- | :---------- | :--------- | :------- |
-| `CallableModel` + `analyze(model)` | function, `X1`, `X2` | samples **and** runs the model | the model is cheap and in-process |
-| `PickAndFreezeSample` + `analyze(S, Y)` | `X1`, `X2`; you run the model over `S.samples` | builds `Z` and `π` | custom batching, checkpointing, HPC / remote runs |
-| `PickAndFreezeSample(X, perms)` + `analyze(S, Y)` | everything, including `Z` and `permutations` | analysis only | doing something unusual to `Z` |
+| You build | `analyze` runs | Use when |
+| :-- | :--------- | :------- |
+| `PickAndFreezeSample(X1, X2)` | pick-and-freeze — `analyze(model, S)` | independent factors, known distribution |
+| `PickAndFreezeSample(names, n, dists, MonteCarloSampling())` | pick-and-freeze, with `A`/`B` drawn for you | you have per-factor distributions rather than pre-built `X1`/`X2` |
+| `PickAndFreezeSample(X1, X2; conditional_sampler=...)` | pick-and-freeze, dependent factors | some factors depend on others |
+| `PickAndFreezeSample(X, perms)` | pick-and-freeze over an already-built sample table | any other custom sampling scheme, e.g. QMC-derived permutations |
+| `DoubleMonteCarloSample(names, dists, m, strategy)` | double Monte Carlo — `analyze(model, S)` | independent factors, want lower variance per evaluation |
 
 ### Dependent factors (how-to) — the important one
 
@@ -48,7 +51,8 @@ table:
 ### Reproducibility (explanation)
 
 Seeding, `Distributed` / `pmap` and per-worker RNG, why deterministic conditional samplers
-matter, quasi-Monte Carlo permutations via `PickAndFreezeSample(names, X, sampler)`.
+matter, and custom sampling schemes via `PickAndFreezeSample(samples, perms)` — build the
+table yourself, then wrap it directly.
 
 ### API reference
 
@@ -63,7 +67,8 @@ override.
   job), create an empty `gh-pages` branch, enable Pages in the repo settings. `deploydocs`
   is already wired up in `docs/make.jl`; it needs either a `DOCUMENTER_KEY` secret or the
   default `GITHUB_TOKEN` with Pages write permission.
-- `docs/build/` and `docs/Manifest.toml` are git-ignored.
+- `docs/build/` is git-ignored; `docs/Manifest.toml` is tracked (pinned docs-environment
+  versions, including `LiveServer` for local live-reload previews via `servedocs()`).
 - Consider **Literate.jl** for the dependent-factors tutorial, so the example is a runnable
   script that doubles as a test.
 
