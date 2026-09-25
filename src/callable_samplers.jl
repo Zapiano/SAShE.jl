@@ -4,10 +4,10 @@ using Distributions
 import QuasiMonteCarlo as QMC
 
 """
-    PickAndFreezeSample(factor_names::Union{Vector{String},Vector{Symbol}}, n_samples::Int64, factor_dist::Vector{<:Distribution}, strategy::SamplingStrategy; rng=default_rng())
-    PickAndFreezeSample(A::DataFrame, B::DataFrame; conditional_sampler=nothing, rng=default_rng())
-    PickAndFreezeSample(A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing)
-    PickAndFreezeSample(samples::DataFrame, permutations::Matrix{Int64})
+    CallablePickAndFreezeSample(factor_names::Union{Vector{String},Vector{Symbol}}, n_samples::Int64, factor_dist::Vector{<:Distribution}, strategy::SamplingStrategy; rng=default_rng())
+    CallablePickAndFreezeSample(A::DataFrame, B::DataFrame; conditional_sampler=nothing, rng=default_rng())
+    CallablePickAndFreezeSample(A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing)
+    CallablePickAndFreezeSample(samples::DataFrame, permutations::Matrix{Int64})
 
 SAShE samples (`X`) and permutations (`π`), the pick-and-freeze sample table [`analyze`](@ref)
 runs a [`CallableModel`](@ref) over.
@@ -61,33 +61,33 @@ n_factors = 3
 A = DataFrame(rand(du, n_samples, n_factors), factor_names)
 B = DataFrame(rand(du, n_samples, n_factors), factor_names)
 
-s = PickAndFreezeSample(A, B)
+s = CallablePickAndFreezeSample(A, B)
 Φₙ, Φ²ₙ = analyze(m, s)
 
 # Drawn fresh, with an explicit sampling strategy
-s = PickAndFreezeSample([:x1, :x2, :x3], n_samples, [du, du, du], MonteCarloSampling())
+s = CallablePickAndFreezeSample([:x1, :x2, :x3], n_samples, [du, du, du], MonteCarloSampling())
 Φₙ, Φ²ₙ = analyze(m, s)
 
 # With dependent factors: redraw resampled factors conditional on the frozen ones
-s = PickAndFreezeSample(A, B; conditional_sampler=my_conditional_sampler)
+s = CallablePickAndFreezeSample(A, B; conditional_sampler=my_conditional_sampler)
 Φₙ, Φ²ₙ = analyze(m, s)
 ```
 
 $(FIELDS)
 """
-struct PickAndFreezeSample
+struct CallablePickAndFreezeSample
     "SAShE samples"
     samples::DataFrame
 
     "Permutation applied to generate samples."
     permutations::Matrix{Int64}
 
-    function PickAndFreezeSample(samples::DataFrame, permutations::Matrix{Int64})
+    function CallablePickAndFreezeSample(samples::DataFrame, permutations::Matrix{Int64})
         _validate_pick_freeze_block(samples, permutations)
         return new(samples, permutations)
     end
 
-    function PickAndFreezeSample(
+    function CallablePickAndFreezeSample(
         factor_names::Union{Vector{String}, Vector{Symbol}},
         n_samples::Int64,
         factor_dist::Vector{<:Distribution},
@@ -102,14 +102,14 @@ struct PickAndFreezeSample
         return new(X, p)
     end
 
-    function PickAndFreezeSample(
+    function CallablePickAndFreezeSample(
         A::DataFrame, B::DataFrame; conditional_sampler=nothing, rng::AbstractRNG=default_rng()
     )
         permutations = generate_permutations(size(A)...; rng=rng)
-        return PickAndFreezeSample(A, B, permutations; conditional_sampler=conditional_sampler)
+        return CallablePickAndFreezeSample(A, B, permutations; conditional_sampler=conditional_sampler)
     end
 
-    function PickAndFreezeSample(
+    function CallablePickAndFreezeSample(
         A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing
     )
         X, p = _build_pick_freeze_block(A, B, permutations)
@@ -121,11 +121,11 @@ struct PickAndFreezeSample
 end
 
 """
-    DoubleMonteCarloSample(factor_names, factor_dist::Vector{<:Distribution}, m::Integer, strategy::SamplingStrategy; N_V=2000, N_O=1, N_I=3, rng=default_rng())
-    DoubleMonteCarloSample(samples::DataFrame, permutations::Matrix{Int64}, N_V::Integer, N_O::Integer, N_I::Integer)
+    CallableDoubleMonteCarloSample(factor_names, factor_dist::Vector{<:Distribution}, m::Integer, strategy::SamplingStrategy; N_V=2000, N_O=1, N_I=3, rng=default_rng())
+    CallableDoubleMonteCarloSample(samples::DataFrame, permutations::Matrix{Int64}, N_V::Integer, N_O::Integer, N_I::Integer)
 
 Pre-built sample table for the double Monte Carlo estimator ([2], §4.1, Algorithm 1),
-independent factors only. Unlike [`PickAndFreezeSample`](@ref)'s row layout, which reuses
+independent factors only. Unlike [`CallablePickAndFreezeSample`](@ref)'s row layout, which reuses
 paired samples, this draws genuinely new inner/outer samples for every coalition along
 every permutation — `factor_dist` must be able to produce as many fresh draws as needed,
 which is why this takes distributions rather than fixed sample tables.
@@ -152,9 +152,9 @@ row layout above); the values inside `samples` are still trusted, not re-derived
   constructor, positional).
 - `N_O` : Number of outer samples per coalition — same two roles as `N_V` above.
 - `N_I` : Number of inner samples per outer sample — must be ≥ 2 to form a sample
-  variance. Unlike the nearest-neighbour estimator's structurally-fixed `N_I=1` (see
-  [`DataModel`](@ref)'s estimator), this is a genuine accuracy/cost knob; [2] finds
-  `N_I=3` near-optimal for a fixed total budget. Same two roles as `N_V` above.
+  variance. Unlike the nearest-neighbour pick-and-freeze estimator, whose `N_I` is fixed at 2
+  by [1], §6.1.2 — see [`DataModel`](@ref)'s estimator — this is a genuine accuracy/cost knob;
+  [2] finds `N_I=3` near-optimal for a fixed total budget. Same two roles as `N_V` above.
 - `rng` : Random number generator (keyword, optional; first constructor only) — governs
   permutation generation regardless of `strategy`, and also every drawn value under
   [`MonteCarloSampling`](@ref) (ignored for draws under [`QuasiMonteCarloSampling`](@ref),
@@ -165,14 +165,14 @@ row layout above); the values inside `samples` are still trusted, not re-derived
 
 See the [References](@ref) page for the full citation behind [2].
 """
-struct DoubleMonteCarloSample
+struct CallableDoubleMonteCarloSample
     samples::DataFrame
     permutations::Matrix{Int64}
     N_V::Int64
     N_O::Int64
     N_I::Int64
 
-    function DoubleMonteCarloSample(
+    function CallableDoubleMonteCarloSample(
         samples::DataFrame, permutations::Matrix{Int64},
         N_V::Integer, N_O::Integer, N_I::Integer,
     )
@@ -180,7 +180,7 @@ struct DoubleMonteCarloSample
         return new(samples, permutations, N_V, N_O, N_I)
     end
 
-    function DoubleMonteCarloSample(
+    function CallableDoubleMonteCarloSample(
         factor_names::Union{Vector{String}, Vector{Symbol}},
         factor_dist::Vector{<:Distribution},
         m::Integer,
@@ -207,6 +207,17 @@ struct DoubleMonteCarloSample
     end
 end
 
+"""
+    _validate_pick_freeze_block(samples, permutations)
+
+Shape checks for a pick-and-freeze sample table: `permutations` has one column per factor in
+`samples`, and `samples` has one untouched base row plus one progressively-swapped row per
+factor for every row of `permutations` (`n_base_samples * (n_factors + 1)` total).
+
+# Arguments
+- `samples` : Pick-and-freeze-shaped sample table to check.
+- `permutations` : Permutation matrix paired with `samples`.
+"""
 function _validate_pick_freeze_block(samples::DataFrame, permutations::Matrix{Int64})
     n_factors = size(samples, 2)
     n_base_samples = size(permutations, 1)
@@ -303,8 +314,8 @@ end
     generate_permutations(n_samples, n_factors; rng=default_rng())::Matrix{Int64}
 
 Draw an `n_samples × n_factors` matrix of independent, uniformly random factor orderings —
-row `i` is a random permutation of `1:n_factors`, the `π` [`PickAndFreezeSample`](@ref) and
-[`DoubleMonteCarloSample`](@ref) walk to build their nested coalitions.
+row `i` is a random permutation of `1:n_factors`, the `π` [`CallablePickAndFreezeSample`](@ref) and
+[`CallableDoubleMonteCarloSample`](@ref) walk to build their nested coalitions.
 
 # Arguments
 - `n_samples` : Number of permutations to draw (one per row).
@@ -324,7 +335,7 @@ end
     _fill_double_monte_carlo_rows!(strategy, Z, N_V, N_O, N_I, permutations, factor_dist; rng)
 
 Fill every row of `Z` after the first `N_V` (the outer/inner replicates for every coalition
-step of every permutation) under `strategy` — see [`DoubleMonteCarloSample`](@ref) for the
+step of every permutation) under `strategy` — see [`CallableDoubleMonteCarloSample`](@ref) for the
 row layout these indices follow.
 
 Dispatches separately per `strategy` rather than sharing one loop: [`MonteCarloSampling`](@ref)
@@ -339,7 +350,7 @@ full dispatches rather than one loop parameterized by a draw function.
 # Arguments
 - `strategy` : How to draw the values — see [`SamplingStrategy`](@ref).
 - `Z` : The sample matrix to fill in place, already sized `total_rows × n_factors`.
-- `N_V`, `N_O`, `N_I` : See [`DoubleMonteCarloSample`](@ref).
+- `N_V`, `N_O`, `N_I` : See [`CallableDoubleMonteCarloSample`](@ref).
 - `permutations` : The `m × n_factors` permutation matrix already generated for this sample.
 - `factor_dist` : One distribution per factor.
 - `rng` : Random number generator (keyword; [`MonteCarloSampling`](@ref) only).

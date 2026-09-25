@@ -33,7 +33,7 @@ X1 = DataFrame(rand(d, 2000, 3), [:x1, :x2, :x3])
 X2 = DataFrame(rand(d, 2000, 3), [:x1, :x2, :x3])
 
 model = CallableModel(ishigami)
-S = PickAndFreezeSample(X1, X2)
+S = CallablePickAndFreezeSample(X1, X2)
 Φₙ, Φ²ₙ, Yₙ = analyze(model, S)
 
 Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)

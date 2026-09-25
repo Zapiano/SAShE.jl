@@ -1,6 +1,6 @@
 @testset "_draw_factor_blocks: QuasiMonteCarloSampling returns correctly-sized distinct blocks" begin
     # Every block comes from one combined point set, sliced -- so blocks must be distinct
-    # and correctly shaped. This matters most for DoubleMonteCarloSample, which needs
+    # and correctly shaped. This matters most for CallableDoubleMonteCarloSample, which needs
     # distinct outer/inner replicates per coalition step.
     #
     # NOTE: distinct blocks alone are *not* evidence the estimator is sound. Deterministic
@@ -33,14 +33,14 @@ end
     @test abs(std(X[:, 2]) - 2.0) < 0.1
 end
 
-@testset "PickAndFreezeSample(factor_names, n_samples, factor_dist, strategy): drawn fresh, MonteCarloSampling" begin
+@testset "CallablePickAndFreezeSample(factor_names, n_samples, factor_dist, strategy): drawn fresh, MonteCarloSampling" begin
     Random.seed!(81)
 
     factor_names = [:x1, :x2, :x3]
     n_samples, n_factors = 20000, length(factor_names)
     du = Uniform(-π, π)
 
-    S = PickAndFreezeSample(factor_names, n_samples, fill(du, n_factors), MonteCarloSampling())
+    S = CallablePickAndFreezeSample(factor_names, n_samples, fill(du, n_factors), MonteCarloSampling())
 
     @test size(S.samples) == (n_samples * (n_factors + 1), n_factors)
     @test size(S.permutations) == (n_samples, n_factors)
@@ -49,11 +49,11 @@ end
     Φₙ, Φ²ₙ, Yₙ = analyze(m, S)
     Φ = SAShE.shapley_effects(Φₙ)
 
-    Φ_base_vals = Φ_ISHIGAMI_EXACT  # see its derivation in test/ishigami.jl
+    Φ_base_vals = Φ_ISHIGAMI_EXACT  # see its derivation in test/reference_values.jl
     @test all(abs.(Φ .- Φ_base_vals) .< (0.1 .* Φ_base_vals))
 end
 
-@testset "PickAndFreezeSample(factor_names, n_samples, factor_dist, strategy): drawn fresh, QuasiMonteCarloSampling" begin
+@testset "CallablePickAndFreezeSample(factor_names, n_samples, factor_dist, strategy): drawn fresh, QuasiMonteCarloSampling" begin
     Random.seed!(82)
 
     factor_names = [:x1, :x2, :x3]
@@ -61,7 +61,7 @@ end
     du = Uniform(-π, π)
     strategy = QuasiMonteCarloSampling(QMC.LatinHypercubeSample())
 
-    S = PickAndFreezeSample(factor_names, n_samples, fill(du, n_factors), strategy)
+    S = CallablePickAndFreezeSample(factor_names, n_samples, fill(du, n_factors), strategy)
 
     @test size(S.samples) == (n_samples * (n_factors + 1), n_factors)
     @test size(S.permutations) == (n_samples, n_factors)
@@ -73,7 +73,7 @@ end
     # No unbiasedness guarantee under QMC-drawn blocks (see QuasiMonteCarloSampling's
     # docstring) -- a coarse ballpark check, not the tight regression tolerance used for
     # MonteCarloSampling above.
-    Φ_base_vals = Φ_ISHIGAMI_EXACT  # see its derivation in test/ishigami.jl
+    Φ_base_vals = Φ_ISHIGAMI_EXACT  # see its derivation in test/reference_values.jl
     @test all(abs.(Φ .- Φ_base_vals) .< (0.3 .* Φ_base_vals))
 end
 
@@ -83,16 +83,16 @@ end
     @test p1 == p2
 end
 
-@testset "PickAndFreezeSample(A, B; rng): reproducible given a seeded rng" begin
-    # Regression test: PickAndFreezeSample(A, B; ...) used to always draw its permutation
+@testset "CallablePickAndFreezeSample(A, B; rng): reproducible given a seeded rng" begin
+    # Regression test: CallablePickAndFreezeSample(A, B; ...) used to always draw its permutation
     # from the global RNG, so it was never reproducible from a seed even though every other
     # sample-drawing constructor was.
     du = Uniform(-π, π)
     A = DataFrame(rand(du, 100, 3), [:x1, :x2, :x3])
     B = DataFrame(rand(du, 100, 3), [:x1, :x2, :x3])
 
-    S1 = PickAndFreezeSample(A, B; rng=Xoshiro(9))
-    S2 = PickAndFreezeSample(A, B; rng=Xoshiro(9))
+    S1 = CallablePickAndFreezeSample(A, B; rng=Xoshiro(9))
+    S2 = CallablePickAndFreezeSample(A, B; rng=Xoshiro(9))
     @test S1.permutations == S2.permutations
     @test S1.samples == S2.samples
 end
@@ -124,7 +124,7 @@ end
     @test fieldtype(typeof(strategy), :algorithm) === typeof(strategy.algorithm)
 end
 
-@testset "DoubleMonteCarloSample with QuasiMonteCarloSampling: correctness vs. closed form" begin
+@testset "CallableDoubleMonteCarloSample with QuasiMonteCarloSampling: correctness vs. closed form" begin
     # The QMC double-MC path had no correctness test at all -- its only assertion was
     # sum(Φ) ≈ var_y, which telescoping makes true regardless of whether the estimator
     # works. Checked here against the additive linear-Gaussian closed form, where each
@@ -134,7 +134,7 @@ end
     σ = [1.0, 0.5, 2.0]
     truth = (β .* σ) .^ 2
 
-    S = DoubleMonteCarloSample(
+    S = CallableDoubleMonteCarloSample(
         [:x1, :x2, :x3], Normal.(0.0, σ), 2048,
         QuasiMonteCarloSampling(QMC.LatinHypercubeSample()); N_V=4096,
     )
@@ -144,13 +144,13 @@ end
     @test all(abs.(Φ .- truth) .< 0.15 .* truth)
 end
 
-@testset "DoubleMonteCarloSample: strategy is a required argument" begin
+@testset "CallableDoubleMonteCarloSample: strategy is a required argument" begin
     factor_names = [:x1, :x2, :x3]
     dists = fill(Normal(), 3)
-    @test_throws MethodError DoubleMonteCarloSample(factor_names, dists, 10)
+    @test_throws MethodError CallableDoubleMonteCarloSample(factor_names, dists, 10)
 end
 
-@testset "DoubleMonteCarloSample with QuasiMonteCarloSampling: shape and step-sharing independence" begin
+@testset "CallableDoubleMonteCarloSample with QuasiMonteCarloSampling: shape and step-sharing independence" begin
     Random.seed!(83)
 
     factor_names = [:x1, :x2, :x3, :x4]
@@ -158,7 +158,7 @@ end
     strategy = QuasiMonteCarloSampling(QMC.LatinHypercubeSample())
 
     m = 20
-    S = DoubleMonteCarloSample(factor_names, dists, m, strategy; N_V=500, N_O=2, N_I=3)
+    S = CallableDoubleMonteCarloSample(factor_names, dists, m, strategy; N_V=500, N_O=2, N_I=3)
 
     n_factors = length(factor_names)
     rows_per_step = 2 * 3

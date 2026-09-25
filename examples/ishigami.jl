@@ -29,7 +29,7 @@ Distributed.addprocs(5)     # replace by a reasonable number.
     samples2 = DataFrame(rand(du, n_samples, n_factors), factor_names)
 
     m = SAShE.CallableModel(ishigami)
-    S = SAShE.PickAndFreezeSample(samples1, samples2)
+    S = SAShE.CallablePickAndFreezeSample(samples1, samples2)
 end
 
 Φₙ, Φ²ₙ, Yₙ = SAShE.analyze(m, S)

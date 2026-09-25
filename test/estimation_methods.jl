@@ -26,7 +26,7 @@ end
     m = CallableModel(ishigami)
 
     # No `estimator=` keyword exists here at all -- calling analyze(m, s) is unambiguous.
-    S = PickAndFreezeSample(X1, X2)
+    S = CallablePickAndFreezeSample(X1, X2)
     Φₙ, Φ²ₙ = analyze(m, S)
     @test size(Φₙ) == (n_factors, n_samples)
 end

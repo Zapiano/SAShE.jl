@@ -13,7 +13,7 @@
     samples2 = DataFrame(hcat([rand(du, n_factors) for _ ∈ 1:n_samples]...)', factor_names)
 
     m = SAShE.CallableModel(ishigami)
-    S = SAShE.PickAndFreezeSample(samples1, samples2)
+    S = SAShE.CallablePickAndFreezeSample(samples1, samples2)
     Φₙ, Φ²ₙ, Yₙ = SAShE.analyze(m, S)
     Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)
     Φ_confint = SAShE.confint(Φₙ, Φ²ₙ)
@@ -36,7 +36,7 @@
 end
 
 
-@testset "Correctness of PickAndFreezeSample assessment" begin
+@testset "Correctness of CallablePickAndFreezeSample assessment" begin
     # Seeded: this testset was previously unseeded, so it drew off whatever global RNG state
     # preceded it and its `sum(Φ) ≈ var(Yₙ)` ratio check could fail by chance at n=1024.
     # That is the flakiness tracked in issue #14.
@@ -53,7 +53,7 @@ end
     samples2 = DataFrame(rand(du, n_samples, n_factors), factor_names)
 
     m = SAShE.CallableModel(ishigami)
-    S = SAShE.PickAndFreezeSample(samples1, samples2)
+    S = SAShE.CallablePickAndFreezeSample(samples1, samples2)
 
     Φₙ, Φ²ₙ, Yₙ = SAShE.analyze(m, S)
     Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)
@@ -68,7 +68,7 @@ end
 
     # Rebuilding the same S.samples/permutations pair and re-running analyze must reproduce
     # identical results.
-    S2 = SAShE.PickAndFreezeSample(S.samples, S.permutations)
+    S2 = SAShE.CallablePickAndFreezeSample(S.samples, S.permutations)
     Φₙ2, Φ²ₙ2, _ = SAShE.analyze(m, S2)
     Φ2, Φlb2, Φub2 = SAShE.shapley_effects(Φₙ2, Φ²ₙ2)
 
