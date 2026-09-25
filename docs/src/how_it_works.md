@@ -26,12 +26,13 @@ instead of `3d`.
 
 `analyze` always takes a model (what you have) and, where one applies, a sample (how to
 draw or evaluate it) — `analyze(model, sample)`. Which estimator runs is determined by the
-*sample's* type: pair a model with a `PickAndFreezeSample` and you get pick-and-freeze; pair
-it with a `DoubleMonteCarloSample` and you get double Monte Carlo ([2] §4.1). `DataModel` is
-the one exception — it has no separate sampling step, so it takes the estimator as an
-explicit third argument instead (no default — you must say which one), since one container
-serves both algorithms there. This section lists what is available for each case; the
-sections after it describe the mechanics.
+*sample's* type: pair a model with a `CallablePickAndFreezeSample` and you get pick-and-freeze; pair
+it with a `CallableDoubleMonteCarloSample` and you get double Monte Carlo ([2] §4.1). `MixModel`
+follows the same shape, paired with `MixPickAndFreezeSample` or `MixDoubleMonteCarloSample`
+instead. `DataModel` is the one exception — it has no separate sampling step, so it takes the
+estimator as an explicit third argument instead (no default — you must say which one), since
+one container serves both algorithms there. This section lists what is available for each
+case; the sections after it describe the mechanics.
 
 ### Read off what's available
 
@@ -39,38 +40,41 @@ sections after it describe the mechanics.
 | :-- | :-- |
 | No model, real data | ✅ `analyze(DataModel(...), n, PickAndFreeze())` |
 | | 🔲 `analyze(DataModel(...), n, DoubleMonteCarlo())` — planned |
-| Model, known distribution, **independent** factors | ✅ `CallableModel` + `PickAndFreezeSample` |
-| | ✅ `CallableModel` + `DoubleMonteCarloSample` |
-| Model, known distribution, **dependent** factors | ✅ `CallableModel` + `PickAndFreezeSample` (with `conditional_sampler`) |
-| | 🔲 `CallableModel` + `DoubleMonteCarloSample` — dependent-factor support planned |
-| Model, real-data inputs ("mix") | 🔲 `MixModel` + `PickAndFreezeSample` — planned |
-| | 🔲 `MixModel` + `DoubleMonteCarloSample` — planned |
+| Model, known distribution, **independent** factors | ✅ `CallableModel` + `CallablePickAndFreezeSample` |
+| | ✅ `CallableModel` + `CallableDoubleMonteCarloSample` |
+| Model, known distribution, **dependent** factors | ✅ `CallableModel` + `CallablePickAndFreezeSample` (with `conditional_sampler`) |
+| | 🔲 `CallableModel` + `CallableDoubleMonteCarloSample` — dependent-factor support planned |
+| Model, real-data inputs ("mix") | ✅ `MixModel` + `MixPickAndFreezeSample` |
+| | ✅ `MixModel` + `MixDoubleMonteCarloSample` |
 
 ### What both methods have in common
 
-- **Both unbiased by construction**, for different reasons. Pick-and-freeze is implemented by two different formulas
-  depending on which type you use, both proven unbiased for any sample size, not just
-  asymptotically:
+- **Pick-and-freeze is implemented by two different formulas**, depending on which type you
+  use:
   - `DataModel`'s dataset-only estimator (`_nearest_neighbour_pick_freeze`) computes
     `V_u = E[Z₁Z₂] - E(Y)²` as a literal product of the query point's own output and its
-    nearest neighbour's, sharing the same held factors — [1]'s Eq. (23).
-  - `CallableModel`/`PickAndFreezeSample`'s permutation walk instead implements [4]'s
+    nearest neighbour's, sharing the same held factors — [1]'s Eq. (23). [1] proves this
+    converges in probability as the dataset and permutation count grow (Theorem 3), with
+    rates in Theorem 4 — the nearest neighbour only *approximates* a draw from the
+    conditional distribution, so this is consistency, not finite-sample unbiasedness.
+  - `CallableModel`/`CallablePickAndFreezeSample`'s permutation walk instead implements [4]'s
     Algorithm 1, which estimates the increment `τ̄²_{u+j} - τ̄²_u` directly via a
     product-of-differences (`(Yₙ - midpoint) × (difference)`, see
     [src/callable_model.jl](https://github.com/Zapiano/SAShE.jl/blob/main/src/callable_model.jl)).
     [4] proves this estimator (Algorithm 1) is unbiased by a direct linearity-of-expectation
     argument (§3.2).
 
-  Double Monte Carlo's cost
-  function, `c(u) = E[Var[Y | X₋ᵤ]]`, has a nested-sample-variance estimator that [2] shows
-  is unbiased for *any* `N_I ≥ 2` (via Sun, Apley & Staum 2011).
+  Double Monte Carlo's cost function, `c(u) = E[Var[Y | X₋ᵤ]]`, has a nested-sample-variance
+  estimator that [2] states is unbiased for any sample size — which is why [2] estimates `c`
+  rather than the alternative `c̃(u) = Var[E[Y|Xᵤ]]` (§3.1).
 - **Both get confidence intervals the same way, with no bootstrapping needed** —
-  `shapley_effects`, `confint`, and `margin_of_error` only assume each permutation's
-  contribution is drawn independently:
+  `shapley_effects`, `confint`, and `margin_of_error` assume each permutation's contribution
+  is drawn independently, which holds for `CallableModel` but not for `DataModel`/`MixModel`
+  (see [Deliberate deviations](@ref)):
 
   ```julia
-  Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)   # works the same for a DoubleMonteCarloSample's
-                                                # or a PickAndFreezeSample's (Φₙ, Φ²ₙ)
+  Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)   # works the same for a CallableDoubleMonteCarloSample's
+                                                # or a CallablePickAndFreezeSample's (Φₙ, Φ²ₙ)
   ```
 
 - **Both converge at the same `O(1/√m)` rate** in the number of permutations `m`.
@@ -79,7 +83,7 @@ sections after it describe the mechanics.
 
 - **No model, real data only** — `DataModel` (pick-and-freeze) is the only estimator
   implemented.
-- **Model, known distribution, dependent factors** — `PickAndFreezeSample` with a
+- **Model, known distribution, dependent factors** — `CallablePickAndFreezeSample` with a
   `conditional_sampler`; double Monte Carlo's dependent-factor support is not implemented.
 
 For the case where both apply (callable model, independent factors), see each method's cost
@@ -89,7 +93,7 @@ Monte Carlo.
 ## Permutations
 
 For `N` base samples SAShE draws an `N × d` matrix `π`, one random factor ordering per row.
-`generate_permutations(N, d)` produces it; `PickAndFreezeSample` and `DoubleMonteCarloSample`
+`generate_permutations(N, d)` produces it; `CallablePickAndFreezeSample` and `CallableDoubleMonteCarloSample`
 do this for you and store it, so the sampling and the analysis always use the same orderings.
 
 ## What is `Z`?
@@ -126,14 +130,14 @@ holds sample data itself, and a sample never holds the model. Build both, then h
 
 ```julia
 model = CallableModel(f)
-S = PickAndFreezeSample(X1, X2)       # Z is S.samples; π is S.permutations
+S = CallablePickAndFreezeSample(X1, X2)       # Z is S.samples; π is S.permutations
 Φₙ, Φ²ₙ, Yₙ = analyze(model, S)        # runs f over Z (in parallel, via pmap), then analyses
 ```
 
 Building `S` yourself this way — rather than relying on some all-in-one shortcut — is what
 lets you control the sampling directly: a custom permutation scheme by wrapping an
-already-built table (`PickAndFreezeSample(samples, perms)`), or dependent factors via
-`conditional_sampler` (`PickAndFreezeSample(X1, X2; conditional_sampler = ...)`). A
+already-built table (`CallablePickAndFreezeSample(samples, perms)`), or dependent factors via
+`conditional_sampler` (`CallablePickAndFreezeSample(X1, X2; conditional_sampler = ...)`). A
 dedicated guide for the dependent case is in [Next steps](@ref).
 
 ## What `analyze` returns

@@ -5,7 +5,7 @@ import QuasiMonteCarlo as QMC
 """
     SamplingStrategy
 
-Abstract supertype for how [`PickAndFreezeSample`](@ref) and [`DoubleMonteCarloSample`](@ref)
+Abstract supertype for how [`CallablePickAndFreezeSample`](@ref) and [`CallableDoubleMonteCarloSample`](@ref)
 draw fresh factor values from `factor_dist`. Concrete subtypes select the draw mechanism
 independently of which sample type uses them — the same role [`EstimationMethod`](@ref)
 plays for choosing an estimator.
@@ -16,7 +16,7 @@ abstract type SamplingStrategy end
     MonteCarloSampling()
 
 Draw factor values by ordinary i.i.d. Monte Carlo (`rand`) — the draw mechanism the
-pick-and-freeze and double Monte Carlo unbiasedness proofs ([1], [2], [4]) are stated for.
+pick-and-freeze and double Monte Carlo convergence results ([1], [2], [4]) are stated for.
 
 See the [References](@ref) page for the full citations behind [1], [2], and [4].
 """
@@ -37,7 +37,7 @@ no measured accuracy advantage over [`MonteCarloSampling`](@ref) here (see
 what the documented workflows use.
 
 Every draw that must be mutually independent (each coalition step's outer/inner replicates in
-`DoubleMonteCarloSample`) is generated as **one** combined low-discrepancy point set, sliced
+`CallableDoubleMonteCarloSample`) is generated as **one** combined low-discrepancy point set, sliced
 into disjoint blocks, rather than calling `algorithm` once per block.
 
 !!! warning "Only randomized algorithms are accepted"
@@ -62,15 +62,15 @@ into disjoint blocks, rather than calling `algorithm` once per block.
       variance. On Ishigami over 8 seeds, `SobolSample()` is biased by 17% and 38% on two of
       three factors (≈10 standard errors) — a consistent offset, not noise.
 
-**Caveat**: the unbiasedness of both estimators is proven in [1], [2], [4] for genuinely
-i.i.d. draws. Whether they remain unbiased even under a *randomized* low-discrepancy design
+**Caveat**: the convergence results for both estimators are established in [1], [2], [4] for
+genuinely i.i.d. draws. Whether they still hold under a *randomized* low-discrepancy design
 is not established by the cited papers — and [4]'s Remark 1 argues the improvement is hard to
 obtain at all for Shapley effects, since generating the permutation breaks the smoothness QMC
 theory relies on. No measured accuracy gain over [`MonteCarloSampling`](@ref) has been
 demonstrated here. Treat results under this strategy as exploratory.
 
 !!! note "Reproducibility"
-    The `rng` keyword threaded through `PickAndFreezeSample`/`DoubleMonteCarloSample` seeds
+    The `rng` keyword threaded through `CallablePickAndFreezeSample`/`CallableDoubleMonteCarloSample` seeds
     the permutations, but **not** this strategy's point set — the algorithm carries its own
     generator. For a reproducible run, construct the algorithm with an explicit one, e.g.
     `QuasiMonteCarloSampling(QuasiMonteCarlo.LatinHypercubeSample(; rng=Xoshiro(1)))`.

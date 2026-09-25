@@ -5,8 +5,8 @@ using Statistics: var
 
 Wraps a callable model for use with [`analyze`](@ref) — the "what you have" container for
 the case where inputs are sampled from a known distribution (independent or dependent).
-Carries no sample data itself: pair it with a [`PickAndFreezeSample`](@ref) or
-[`DoubleMonteCarloSample`](@ref), built independently, to run and analyze `func`.
+Carries no sample data itself: pair it with a [`CallablePickAndFreezeSample`](@ref) or
+[`CallableDoubleMonteCarloSample`](@ref), built independently, to run and analyze `func`.
 
 # Arguments
 - `func` : A function that accepts a vector of factor values and returns a scalar.
@@ -14,7 +14,7 @@ Carries no sample data itself: pair it with a [`PickAndFreezeSample`](@ref) or
 # Examples
 ```julia
 m = CallableModel(ishigami)
-s = PickAndFreezeSample(X1, X2)
+s = CallablePickAndFreezeSample(X1, X2)
 Φₙ, Φ²ₙ = analyze(m, s)
 ```
 """
@@ -27,24 +27,24 @@ function Base.:show(io::IO, m::CallableModel)
 end
 
 """
-    analyze(m::CallableModel, s::PickAndFreezeSample)::Tuple{Matrix{Float64},Matrix{Float64},Vector}
-    analyze(m::CallableModel, s::DoubleMonteCarloSample)::Tuple{Matrix{Float64},Matrix{Float64},Vector}
+    analyze(m::CallableModel, s::CallablePickAndFreezeSample)::Tuple{Matrix{Float64},Matrix{Float64},Vector}
+    analyze(m::CallableModel, s::CallableDoubleMonteCarloSample)::Tuple{Matrix{Float64},Matrix{Float64},Vector}
 
 Run `m.func` over every row of `s.samples` (in parallel, via `pmap`), then estimate Shapley
 effects. Which estimator runs is determined entirely by `s`'s type — there is no
 `estimator=` keyword to choose it explicitly:
 
-- `PickAndFreezeSample` → the pick-and-freeze method of [4] (Algorithm 1).
-- `DoubleMonteCarloSample` → [2]'s double Monte Carlo estimator (§4.1, Algorithm 1), which
-  estimates each coalition's cost function `c(u) = E[Var[Y | X₋ᵤ]]` directly via nested
-  sampling rather than pairing already-known values — chosen by [2] specifically because
-  this cost function's estimator is unbiased for any sample size, unlike the alternative
-  `Var[E[Y|Xᵤ]]` pick-and-freeze relies on.
+- `CallablePickAndFreezeSample` → the pick-and-freeze method of [4], Algorithm 1.
+- `CallableDoubleMonteCarloSample` → [2]'s double Monte Carlo estimator (§4.1, Algorithm 1),
+  which estimates each coalition's cost function `c(u) = E[Var[Y | X₋ᵤ]]` directly via
+  nested sampling rather than pairing already-known values — chosen by [2] specifically
+  because this cost function's estimator is unbiased for any sample size, unlike the
+  alternative `Var[E[Y|Xᵤ]]` pick-and-freeze relies on.
 
 # Arguments
 - `m` : The model to run, wrapped in a [`CallableModel`](@ref).
-- `s` : The sample table to evaluate `m.func` over, wrapped in a [`PickAndFreezeSample`](@ref)
-  or a [`DoubleMonteCarloSample`](@ref).
+- `s` : The sample table to evaluate `m.func` over, wrapped in a
+  [`CallablePickAndFreezeSample`](@ref) or a [`CallableDoubleMonteCarloSample`](@ref).
 
 # Returns
 Tuple `(Φₙ, Φ²ₙ, Yₙ)`:
@@ -52,12 +52,18 @@ Tuple `(Φₙ, Φ²ₙ, Yₙ)`:
     - Φₙ : Per-sample Shapley-effect increments — pass to [`shapley_effects`](@ref) or
       [`confint`](@ref) for final effects and confidence bounds.
     - Φ²ₙ : Their squares, used by the same functions.
-    - Yₙ : `m.func` evaluated at every row of `s.samples`, in case you want it (e.g. to
-      sanity-check `sum(Φ)` against `var(Yₙ)`).
+    - Yₙ : `m.func` evaluated at every row of `s.samples`, in case you want it. With
+      `CallablePickAndFreezeSample`, `sum(Φ)` vs. `var(Yₙ)` is a genuine (if noisy) check on
+      the estimator, since the walk telescopes through real evaluations end to end — see
+      [Getting started](@ref)'s step 5. With `CallableDoubleMonteCarloSample`, it's much
+      weaker: the walk's terminal step is `var(Y[1:N_V])`, computed once up front rather
+      than derived from the double-Monte-Carlo estimator being tested, so a match mainly
+      confirms `N_V` is large enough for that estimate to have converged, not that the
+      inner variance computation is correct — see [Deliberate deviations](@ref).
 
 See the [References](@ref) page for the full citations behind [2] and [4].
 """
-function analyze(m::CallableModel, s::PickAndFreezeSample)
+function analyze(m::CallableModel, s::CallablePickAndFreezeSample)
     Y = pmap(row -> m.func(collect(row)), eachrow(s.samples))
 
     X = s.samples
@@ -109,7 +115,7 @@ function analyze(m::CallableModel, s::PickAndFreezeSample)
 
     return Matrix(Φₙ_increments'), Matrix(Φₙ²_increments'), Y
 end
-function analyze(m::CallableModel, s::DoubleMonteCarloSample)
+function analyze(m::CallableModel, s::CallableDoubleMonteCarloSample)
     Y = pmap(row -> m.func(collect(row)), eachrow(s.samples))
 
     N_V, N_O, N_I = s.N_V, s.N_O, s.N_I
