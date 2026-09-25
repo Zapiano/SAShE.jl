@@ -4,6 +4,8 @@ required by any partial run (the suite is conventionally run with `ishigami.jl` 
 from the rest — see issue #14 — so shared constants must not live in either half).
 """
 
+using LinearAlgebra: cholesky, \
+
 """
     ishigami(X; a=7.0, b=0.1)
 
@@ -41,3 +43,46 @@ const Φ_ISHIGAMI_EXACT = [6.032738, 6.125, 1.686851]
 
 "Exact `Var[Y]` for [`ishigami`](@ref) with `a=7, b=0.1`, `Xᵢ ~ U(-π, π)` iid."
 const VAR_Y_ISHIGAMI_EXACT = 13.844588
+
+"""
+    _linear_gaussian_theoretical_shapley(β, Γ)::Vector{Float64}
+
+Exact Shapley effects for a linear Gaussian model `Y = β'X`, `X ~ N(0, Γ)`, computed by
+brute-force enumeration of the Owen/Shapley decomposition ([1], Eq. 4), used as ground truth
+for correctness checks against dependent-factor estimators (nearest-neighbour and `MixModel`
+both approximate conditional structure via the dataset itself, so this is the reference for
+either). Not part of the package API — a test-only reference implementation, independent of
+the code under test.
+"""
+function _linear_gaussian_theoretical_shapley(β::Vector{Float64}, Γ::Matrix{Float64})
+    p = length(β)
+    all_idx = collect(1:p)
+    var_y = sum(β .* (Γ * β))
+
+    # E(X_{-u} | X_u) = Γ_{-u,u} Γ_{u,u}^{-1} X_u  (zero-mean Gaussian), so
+    # E(Y | X_u) = c_u' X_u  with  c_u = β_u + Γ_{u,u}^{-1} Γ_{u,-u} β_{-u}.
+    function V(u::Vector{Int64})
+        isempty(u) && return 0.0
+        length(u) == p && return var_y
+        nu = setdiff(all_idx, u)
+        Γuu = Γ[u, u]
+        Γu_nu = Γ[u, nu]
+        c = β[u] .+ (Γuu \ (Γu_nu * β[nu]))
+        return sum(c .* (Γuu * c))
+    end
+
+    subsets(v::Vector{Int64}) = [
+        v[[Bool((mask >> (j - 1)) & 1) for j ∈ eachindex(v)]] for mask ∈ 0:(2^length(v) - 1)
+    ]
+
+    η = zeros(p)
+    for i ∈ 1:p
+        others = setdiff(all_idx, [i])
+        for u ∈ subsets(others)
+            w = 1 / binomial(p - 1, length(u))
+            η[i] += w * (V(vcat(u, i)) - V(u))
+        end
+        η[i] /= p
+    end
+    return η
+end
