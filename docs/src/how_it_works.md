@@ -1,8 +1,8 @@
 # How it works
 
 You can use SAShE without reading this page. It is here for when you want to know what
-`analyze` is doing, or when you need finer control over the sampling — running the model on
-a cluster, checkpointing, or handling dependent factors.
+`analyze` is doing, or when you need finer control over the sampling — building the sample
+table yourself, or handling dependent factors.
 
 ## The idea: pick-freeze
 
@@ -22,23 +22,75 @@ the factors and move them one at a time from the resampled set to the held set: 
 pass yields the term for every factor at once, at `d + 1` model evaluations per sample
 instead of `3d`.
 
-## The `estimator=` keyword
+## Which method should I use?
 
-`analyze` takes an `estimator=` keyword selecting the estimation method — currently only
-`PickAndFreeze()` (the algorithm this page describes), which is also the default, so
-existing calls don't need to change. It exists as an extension point: other estimation
-methods are expected to land behind the same keyword later, without changing how you build
-or call `CallableModel`, `CallableModelSample`, or `DataModel`.
+`analyze` always takes a model (what you have) and, where one applies, a sample (how to
+draw or evaluate it) — `analyze(model, sample)`. Which estimator runs is determined by the
+*sample's* type: pair a model with a `PickAndFreezeSample` and you get pick-and-freeze; pair
+it with a `DoubleMonteCarloSample` and you get double Monte Carlo ([2] §4.1). `DataModel` is
+the one exception — it has no separate sampling step, so it takes the estimator as an
+explicit third argument instead (no default — you must say which one), since one container
+serves both algorithms there. This section lists what is available for each case; the
+sections after it describe the mechanics.
 
-```julia
-Φₙ, Φ²ₙ, Yₙ = analyze(model; estimator=PickAndFreeze())   # equivalent to analyze(model)
-```
+### Read off what's available
+
+| Scenario | Can use |
+| :-- | :-- |
+| No model, real data | ✅ `analyze(DataModel(...), n, PickAndFreeze())` |
+| | 🔲 `analyze(DataModel(...), n, DoubleMonteCarlo())` — planned |
+| Model, known distribution, **independent** factors | ✅ `CallableModel` + `PickAndFreezeSample` |
+| | ✅ `CallableModel` + `DoubleMonteCarloSample` |
+| Model, known distribution, **dependent** factors | ✅ `CallableModel` + `PickAndFreezeSample` (with `conditional_sampler`) |
+| | 🔲 `CallableModel` + `DoubleMonteCarloSample` — dependent-factor support planned |
+| Model, real-data inputs ("mix") | 🔲 `MixModel` + `PickAndFreezeSample` — planned |
+| | 🔲 `MixModel` + `DoubleMonteCarloSample` — planned |
+
+### What both methods have in common
+
+- **Both unbiased by construction**, for different reasons. Pick-and-freeze is implemented by two different formulas
+  depending on which type you use, both proven unbiased for any sample size, not just
+  asymptotically:
+  - `DataModel`'s dataset-only estimator (`_nearest_neighbour_pick_freeze`) computes
+    `V_u = E[Z₁Z₂] - E(Y)²` as a literal product of the query point's own output and its
+    nearest neighbour's, sharing the same held factors — [1]'s Eq. (23).
+  - `CallableModel`/`PickAndFreezeSample`'s permutation walk instead implements [4]'s
+    Algorithm 1, which estimates the increment `τ̄²_{u+j} - τ̄²_u` directly via a
+    product-of-differences (`(Yₙ - midpoint) × (difference)`, see
+    [src/callable_model.jl](https://github.com/Zapiano/SAShE.jl/blob/main/src/callable_model.jl)).
+    [4] proves this estimator (Algorithm 1) is unbiased by a direct linearity-of-expectation
+    argument (§3.2).
+
+  Double Monte Carlo's cost
+  function, `c(u) = E[Var[Y | X₋ᵤ]]`, has a nested-sample-variance estimator that [2] shows
+  is unbiased for *any* `N_I ≥ 2` (via Sun, Apley & Staum 2011).
+- **Both get confidence intervals the same way, with no bootstrapping needed** —
+  `shapley_effects`, `confint`, and `margin_of_error` only assume each permutation's
+  contribution is drawn independently:
+
+  ```julia
+  Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)   # works the same for a DoubleMonteCarloSample's
+                                                # or a PickAndFreezeSample's (Φₙ, Φ²ₙ)
+  ```
+
+- **Both converge at the same `O(1/√m)` rate** in the number of permutations `m`.
+
+### Where each one is the only option
+
+- **No model, real data only** — `DataModel` (pick-and-freeze) is the only estimator
+  implemented.
+- **Model, known distribution, dependent factors** — `PickAndFreezeSample` with a
+  `conditional_sampler`; double Monte Carlo's dependent-factor support is not implemented.
+
+For the case where both apply (callable model, independent factors), see each method's cost
+formula above and the papers behind them — [4] for pick-and-freeze, [2] and [1] for double
+Monte Carlo.
 
 ## Permutations
 
 For `N` base samples SAShE draws an `N × d` matrix `π`, one random factor ordering per row.
-`generate_permutations(N, d)` produces it; `CallableModel` and `CallableModelSample` do this for you
-and store it, so the sampling and the analysis always use the same orderings.
+`generate_permutations(N, d)` produces it; `PickAndFreezeSample` and `DoubleMonteCarloSample`
+do this for you and store it, so the sampling and the analysis always use the same orderings.
 
 ## What is `Z`?
 
@@ -66,27 +118,23 @@ taken from the `X1` row and **B** for one taken from the `X2` row):
 Running the model over every row of `Z` gives a vector `Y`. The Shapley-effect increments
 are read straight off consecutive entries of `Y` within each block.
 
-## Two ways to get from samples to results
+## Model and sample, always together
 
-**Let SAShE drive it** — give it the function and the two sample sets:
-
-```julia
-model = CallableModel(f, X1, X2)
-Φₙ, Φ²ₙ, Yₙ = analyze(model)          # builds Z, runs f over it, analyses
-```
-
-**Drive it yourself** — build the sample, run the model however you like, hand back `Y`:
+`analyze` always takes a model and a sample built independently — a `CallableModel` never
+holds sample data itself, and a sample never holds the model. Build both, then hand them to
+`analyze` together:
 
 ```julia
-S = CallableModelSample(X1, X2)               # Z is S.samples; π is S.permutations
-Y = map(row -> f(collect(row)), eachrow(S.samples))
-Φₙ, Φ²ₙ = analyze(S, Y)
+model = CallableModel(f)
+S = PickAndFreezeSample(X1, X2)       # Z is S.samples; π is S.permutations
+Φₙ, Φ²ₙ, Yₙ = analyze(model, S)        # runs f over Z (in parallel, via pmap), then analyses
 ```
 
-The second form is what you want when the model evaluation needs its own batching,
-checkpointing, or a compute cluster — or when the factors are dependent and `Z` needs to be
-conditionally resampled (`CallableModelSample(X1, X2; conditional_sampler = ...)`). A dedicated
-guide for the dependent case is in [Next steps](@ref).
+Building `S` yourself this way — rather than relying on some all-in-one shortcut — is what
+lets you control the sampling directly: a custom permutation scheme by wrapping an
+already-built table (`PickAndFreezeSample(samples, perms)`), or dependent factors via
+`conditional_sampler` (`PickAndFreezeSample(X1, X2; conditional_sampler = ...)`). A
+dedicated guide for the dependent case is in [Next steps](@ref).
 
 ## What `analyze` returns
 

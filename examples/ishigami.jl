@@ -28,10 +28,11 @@ Distributed.addprocs(5)     # replace by a reasonable number.
     samples1 = DataFrame(rand(du, n_samples, n_factors), factor_names)
     samples2 = DataFrame(rand(du, n_samples, n_factors), factor_names)
 
-    sa_problem = SAShE.CallableModel(ishigami, samples1, samples2)
+    m = SAShE.CallableModel(ishigami)
+    S = SAShE.PickAndFreezeSample(samples1, samples2)
 end
 
-Φₙ, Φ²ₙ, Yₙ = SAShE.analyze(sa_problem)
+Φₙ, Φ²ₙ, Yₙ = SAShE.analyze(m, S)
 Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)
 Φ_confint = SAShE.confint(Φₙ, Φ²ₙ)
 Φ_moe = SAShE.margin_of_error(Φₙ, Φ²ₙ)

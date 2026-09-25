@@ -1,7 +1,5 @@
-
-function ishigami(X::Vector{Float64}; a::Float64=7.0, b::Float64=0.1)
-    return (1 + b * X[3]^4) * sin(X[1]) + a * (sin(X[2]))^2
-end
+# `ishigami` and the exact reference values live in test/reference_values.jl, so that both
+# this file and the rest of the suite can be run independently of each other.
 
 @testset "Ishigami function" begin
     Random.seed!(0987)
@@ -14,8 +12,9 @@ end
     samples1 = DataFrame(hcat([rand(du, n_factors) for _ ∈ 1:n_samples]...)', factor_names)
     samples2 = DataFrame(hcat([rand(du, n_factors) for _ ∈ 1:n_samples]...)', factor_names)
 
-    sa_problem = SAShE.CallableModel(ishigami, samples1, samples2)
-    Φₙ, Φ²ₙ, Yₙ = SAShE.analyze(sa_problem)
+    m = SAShE.CallableModel(ishigami)
+    S = SAShE.PickAndFreezeSample(samples1, samples2)
+    Φₙ, Φ²ₙ, Yₙ = SAShE.analyze(m, S)
     Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)
     Φ_confint = SAShE.confint(Φₙ, Φ²ₙ)
     Φ_moe = SAShE.margin_of_error(Φₙ, Φ²ₙ)
@@ -23,15 +22,26 @@ end
     @test all(Φ_confint[2] .- Φ_confint[1] .== (Φub .- Φlb))
     @test all(2 .* Φ_moe .≈ Φub .- Φlb)
 
-    Φ_confint_base_vals = [0.56, 0.34, 00.37]
-    Φ_base_vals = [6.17, 6.08, 1.64]
+    # Verify the margin-of-error arithmetic against the textbook formula computed a different
+    # way: `Φₙ`'s columns are per-sample increments already carrying a 1/N factor, so the
+    # per-sample values are N·Φₙ[j, :], and the standard error is their (Bessel-corrected)
+    # std over sqrt(N). This replaces an earlier pin of the interval *width* to hardcoded
+    # numbers -- a width is itself a random quantity, so pinning it tested nothing about
+    # correctness while re-rolling on any change that shifted the RNG stream.
+    N = size(Φₙ, 2)
+    moe_reference = [1.96 * std(N .* Φₙ[j, :]) / sqrt(N) for j ∈ 1:n_factors]
+    @test all(isapprox.(Φ_moe, moe_reference; rtol=1e-10))
 
-    @test all(abs.(((Φub .- Φlb) .- Φ_confint_base_vals)) .< (0.1 .* Φ_confint_base_vals))
-    @test all(abs.(Φ .- Φ_base_vals) .< (0.1 .* Φ_base_vals))
+    @test all(abs.(Φ .- Φ_ISHIGAMI_EXACT) .< (0.1 .* Φ_ISHIGAMI_EXACT))
 end
 
 
-@testset "Correctness of CallableModelSample assessment" begin
+@testset "Correctness of PickAndFreezeSample assessment" begin
+    # Seeded: this testset was previously unseeded, so it drew off whatever global RNG state
+    # preceded it and its `sum(Φ) ≈ var(Yₙ)` ratio check could fail by chance at n=1024.
+    # That is the flakiness tracked in issue #14.
+    Random.seed!(4321)
+
     factor_names = [:x1, :x2, :x3]
     n_samples = 1024
     n_factors = length(factor_names)
@@ -42,23 +52,25 @@ end
     samples1 = DataFrame(rand(du, n_samples, n_factors), factor_names)
     samples2 = DataFrame(rand(du, n_samples, n_factors), factor_names)
 
-    sa_problem = SAShE.CallableModel(ishigami, samples1, samples2)
+    m = SAShE.CallableModel(ishigami)
+    S = SAShE.PickAndFreezeSample(samples1, samples2)
 
-    Φₙ, Φ²ₙ, Yₙ = SAShE.analyze(sa_problem)
+    Φₙ, Φ²ₙ, Yₙ = SAShE.analyze(m, S)
     Φ, Φlb, Φub = SAShE.shapley_effects(Φₙ, Φ²ₙ)
 
     Φ_confint = SAShE.confint(Φₙ, Φ²ₙ)
     Φ_moe = SAShE.margin_of_error(Φₙ, Φ²ₙ)
 
-    # Compare model variance with sum of Shapley Effects
-    @test min(var(Yₙ), sum(Φ)) / max(var(Yₙ), sum(Φ)) > 0.95 || "Ishigami did not converge"
+    # Shapley effects must sum to the output variance (efficiency). `@test cond || "msg"` was
+    # used here before: when `cond` is false that expression evaluates to a `String`, which
+    # Test.jl records as an Error rather than a clean Fail, obscuring the diagnostic.
+    @test min(var(Yₙ), sum(Φ)) / max(var(Yₙ), sum(Φ)) > 0.95
 
-    # S_x = CallableModelSample(samples1, samples2, sa_problem.permutations)
-    S_x = CallableModelSample(sa_problem)
-    Y = map(x -> ishigami(collect(x)), eachrow(S_x.samples))
-    Φₙ, Φ²ₙ = SAShE.analyze(S_x, Y)
-    Φ2, Φlb2, Φub2 = SAShE.shapley_effects(Φₙ, Φ²ₙ)
+    # Rebuilding the same S.samples/permutations pair and re-running analyze must reproduce
+    # identical results.
+    S2 = SAShE.PickAndFreezeSample(S.samples, S.permutations)
+    Φₙ2, Φ²ₙ2, _ = SAShE.analyze(m, S2)
+    Φ2, Φlb2, Φub2 = SAShE.shapley_effects(Φₙ2, Φ²ₙ2)
 
-    # Ensure results are identical to initial analysis
-    @test all(Φ .== Φ2) || "Results do not match with same permutations"
+    @test all(Φ .== Φ2)
 end

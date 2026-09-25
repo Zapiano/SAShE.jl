@@ -18,15 +18,6 @@ This costs **zero new evaluations** — appropriate when there is no model to ca
 calling one is prohibitively expensive — at the cost of some estimator variance from the
 nearest-neighbour approximation itself, on top of the usual Monte Carlo sampling variance.
 
-Within one `analyze` call, repeated `(reference row, coalition)` pairs are cached
-automatically — there's nothing to configure. With `n_permutations` in the thousands this
-matters: there are only `2^d - 2` non-trivial coalitions for `d` factors, so the same pair
-recurs often, and each one now triggers at most one nearest-neighbour search. One
-consequence: this makes `analyze` skip randomness that a cache miss would have consumed, so
-the exact numbers for a given `rng` seed can differ from an older SAShE.jl version — the
-estimator's statistical behaviour is unchanged, only which specific pseudo-random draws get
-used.
-
 ## 1. Build (or load) the dataset
 
 Any table of `(X, Y)` observations works. Here, one is generated from the
@@ -55,17 +46,16 @@ nothing # hide
 
 ```@example dataset_only
 model = DataModel(X, Y)
-Φₙ, Φ²ₙ = analyze(model, 5000)
+Φₙ, Φ²ₙ = analyze(model, 5000, PickAndFreeze())
 nothing # hide
 ```
 
 The second argument to `analyze` is the number of random permutations to average over — an
-accuracy/budget knob, distinct from `n_samples` above (the size of the dataset itself).
-`Φₙ` and `Φ²ₙ` are increments in the same shape `CallableModel`'s workflow returns — every
-downstream helper works unchanged.
-
-`analyze` also takes an `estimator=` keyword — see [How it works](@ref) — currently only
-`PickAndFreeze()` (the default, so nothing above needs to change).
+accuracy/budget knob, distinct from `n_samples` above (the size of the dataset itself). The
+third, `PickAndFreeze()` — see [How it works](@ref) — must be given explicitly; there is no
+default, and for now it's the only estimator implemented for `DataModel`. `Φₙ` and `Φ²ₙ` are
+increments in the same shape `CallableModel`'s workflow returns — every downstream helper
+works unchanged.
 
 ## 3. Turn the increments into estimates
 
@@ -86,18 +76,22 @@ too coarse — a larger dataset helps here too).
 
 ## Caveats
 
-- **The neighbour count is fixed at 2**, not a tunable accuracy knob. `V_u = Var(E(Y|X_u))`
+- **The neighbour count is fixed at 1**, not a tunable accuracy knob. `V_u = Var(E(Y|X_u))`
   is recovered via `E(E(Y|X_u)²) = E(f(X)f(X^u))` ([1]'s Proposition 2), which holds only
   because it multiplies exactly *two* conditionally-independent draws sharing the same
   conditional mean `Z = E(Y|X_u)` — the standard `E[Z₁Z₂] = Z²` trick for an unbiased
-  estimator of a squared mean (`E[Z₁²]` alone would be biased upward by `Var(Z₁)`).
-  Multiplying three or more draws together would estimate a different, wrong quantity, not
-  a more accurate `V_u`. Increasing dataset size or permutation count are the available ways
-  to reduce estimator variance instead.
+  estimator of a squared mean (`E[Z₁²]` alone would be biased upward by `Var(Z₁)`). One of
+  the two draws is the query point's own, exact output `Y[s]`; the other is its nearest
+  neighbour's. Multiplying three or more draws together would estimate a different, wrong
+  quantity, not a more accurate `V_u`. Increasing dataset size or permutation count are the
+  available ways to reduce estimator variance instead.
 - **Distance is standardized Euclidean** by default (each coordinate z-scored before
   comparing) — unweighted Euclidean distance would otherwise let whichever coordinate has
   the largest variance dominate the search. This accounts for scale but not correlation
   between coordinates (a Mahalanobis-distance option, accounting for both, is planned).
 - Only continuous/discrete numerical inputs are supported; categorical inputs are not yet.
+- This estimator's convergence and the assumptions behind it are set out in [1] §6 — in
+  particular Theorem 4 for its rate, and §6.2 for how the conditional elements are aggregated.
+  See the [References](@ref) page.
 
 See the [References](@ref) page for the estimator's full citation.

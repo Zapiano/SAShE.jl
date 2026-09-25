@@ -2,6 +2,8 @@
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SAShE = "83401093-d8e7-49c8-a98d-2b177fad4d3a"
 

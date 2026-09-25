@@ -67,9 +67,13 @@ one is a function of the others), the sampling needs an extra step — see [Next
 
 ## 3. Run the analysis
 
+Wrap the model in a `CallableModel`, build a `PickAndFreezeSample` from your two sample
+sets, then `analyze` them together — `analyze` always takes a model and a sample:
+
 ```@example gs
-model = CallableModel(ishigami, X1, X2)
-Φₙ, Φ²ₙ, Yₙ = analyze(model)
+model = CallableModel(ishigami)
+S = PickAndFreezeSample(X1, X2)
+Φₙ, Φ²ₙ, Yₙ = analyze(model, S)
 nothing # hide
 ```
 
@@ -118,9 +122,21 @@ If these disagree by more than a few percent, increase `n_samples`.
 
 ## Interpreting the result
 
-The exact Shapley effects for the Ishigami function with `a = 7`, `b = 0.1` are
-approximately `[6.0, 6.1, 1.7]` for `x1`, `x2`, `x3` — summing to the total output variance
-of about `13.8`. The estimates above are a finite-sample approximation of these.
+The exact Shapley effects for the Ishigami function with `a = 7`, `b = 0.1` and
+`xᵢ ~ U(-π, π)` are `[6.0327, 6.1250, 1.6869]` for `x1`, `x2`, `x3`, summing to the total
+output variance `13.8446`. The estimates above are a finite-sample approximation of these.
+
+These come from the function's ANOVA decomposition, which has only three non-zero components:
+
+```math
+\\sigma^2_1 = \\tfrac{1}{2}\\left(1 + \\tfrac{b\\pi^4}{5}\\right)^2, \\qquad
+\\sigma^2_2 = \\tfrac{a^2}{8}, \\qquad
+\\sigma^2_{13} = b^2\\pi^8\\left(\\tfrac{1}{18} - \\tfrac{1}{50}\\right)
+```
+
+with `σ²₃ = σ²₁₂ = σ²₂₃ = σ²₁₂₃ = 0`. Owen's decomposition, `φᵢ = Σ_{u ∋ i} σ²_u / |u|`, then
+gives `φ₁ = σ²₁ + σ²₁₃/2`, `φ₂ = σ²₂`, `φ₃ = σ²₁₃/2`. The same values and derivation are used
+as the reference throughout the test suite (`test/reference_values.jl`).
 
 - `x1` and `x2` contribute almost equally.
 - `x3` has **zero main effect** — on its own it explains none of the variance — yet its
