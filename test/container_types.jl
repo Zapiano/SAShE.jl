@@ -8,11 +8,21 @@
     Y = map(row -> ishigami(collect(row)), eachrow(X))
     model = DataModel(X, Y)
 
-    Φₙ_a, Φ²ₙ_a = SAShE.analyze(model, 500; rng=Xoshiro(1))
-    Φₙ_b, Φ²ₙ_b = SAShE.analyze(model, 500; rng=Xoshiro(1))
+    Φₙ_a, Φ²ₙ_a = SAShE.analyze(model, 500, PickAndFreeze(); rng=Xoshiro(1))
+    Φₙ_b, Φ²ₙ_b = SAShE.analyze(model, 500, PickAndFreeze(); rng=Xoshiro(1))
 
     @test Φₙ_a == Φₙ_b
     @test Φ²ₙ_a == Φ²ₙ_b
+end
+
+@testset "DataModel: rejects mismatched X/Y row counts" begin
+    factor_names = [:x1, :x2, :x3]
+    du = Uniform(-π, π)
+
+    X = DataFrame(rand(du, 200, length(factor_names)), factor_names)
+    Y = rand(du, 199)
+
+    @test_throws ArgumentError DataModel(X, Y)
 end
 
 @testset "MixModel: constructs, has no estimator yet" begin
