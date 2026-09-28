@@ -10,4 +10,6 @@ Here we assume the existence of a model $f(x_1, ..., x_N): \mathbb{R}^N \rightar
   - They sum up to the model's total variance
   - They can be compound (you can sum the *Shapley effects* for two variables to get their share in the model's total variance)
 
+```@raw html
 <!-- TODO: complete this page-->
+```
