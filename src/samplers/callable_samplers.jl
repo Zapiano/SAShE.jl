@@ -8,6 +8,7 @@ import QuasiMonteCarlo as QMC
     CallablePickAndFreezeSample(A::DataFrame, B::DataFrame; conditional_sampler=nothing, rng=default_rng())
     CallablePickAndFreezeSample(A::DataFrame, B::DataFrame, permutations::Matrix{Int64}; conditional_sampler=nothing)
     CallablePickAndFreezeSample(samples::DataFrame, permutations::Matrix{Int64})
+    CallablePickAndFreezeSample(X::DataFrame; conditional_sampler=nothing, rng=default_rng())
 
 SAShE samples (`X`) and permutations (`π`), the pick-and-freeze sample table [`analyze`](@ref)
 runs a [`CallableModel`](@ref) over.
@@ -16,12 +17,19 @@ Pass `conditional_sampler` when some factors are dependent: after the pick-freez
 are built, every non-base row has its resampled factors redrawn conditional on the frozen
 ones. See [`_conditionally_resample!`](@ref) for the expected signature.
 
-The last form wraps an already pick-freeze-shaped `samples`/`permutations` pair directly —
+The fourth form wraps an already pick-freeze-shaped `samples`/`permutations` pair directly —
 e.g. built by some other sampling scheme, such as quasi-Monte Carlo permutations — instead
 of building one from scratch. Only the *shape* is checked (row count against
 `n_base_samples * (n_factors + 1)`, and one permutation column per factor); the row
 **contents** are trusted, not re-derived. A table of the right shape whose rows don't follow
 `permutations` — or with `A`/`B` swapped — will pass and produce silently wrong effects.
+
+The last form is for when you have a single, already-drawn i.i.d. dataset rather than two
+separate samples: it splits `X` into two halves (`A = X[1:n÷2, :]`, `B = X[(n÷2+1):end, :]`)
+and delegates to the `(A, B)` form. `X` must have an even number of rows — each half is only
+a valid i.i.d. sample in its own right if the split doesn't leave one half a row short. No
+reshuffling is done; if `X`'s rows aren't already in an arbitrary/i.i.d. order (e.g. it's
+sorted by some column), split it yourself before calling this instead.
 
 # Arguments
 - `factor_names` : Vector of factor names (`String` or `Symbol`).
@@ -35,10 +43,12 @@ of building one from scratch. Only the *shape* is checked (row count against
 - `permutations` : Permutation matrix to use instead of generating a new one.
 - `conditional_sampler` : Redraw function for dependent factors (keyword, optional) — see
   [`_conditionally_resample!`](@ref).
-- `samples` (in the last form) : An already pick-freeze-shaped sample table, stored directly
+- `samples` (fourth form) : An already pick-freeze-shaped sample table, stored directly
   as the `samples` field below.
-- `rng` : Random number generator (keyword, optional; first and second forms only) — governs
-  permutation generation in both, and also `A`/`B`'s values in the first form under
+- `X` (last form) : A single dataset to split in half into `A` and `B`. Must have an even
+  number of rows.
+- `rng` : Random number generator (keyword, optional; all but the fourth form) — governs
+  permutation generation, and also `A`/`B`'s values in the first form under
   [`MonteCarloSampling`](@ref) (ignored by [`QuasiMonteCarloSampling`](@ref) there, which
   draws its own low-discrepancy points instead).
 
@@ -71,6 +81,11 @@ s = CallablePickAndFreezeSample([:x1, :x2, :x3], n_samples, [du, du, du], MonteC
 # With dependent factors: redraw resampled factors conditional on the frozen ones
 s = CallablePickAndFreezeSample(A, B; conditional_sampler=my_conditional_sampler)
 Φₙ, Φ²ₙ = analyze(m, s)
+
+# From a single, already-drawn dataset: split it into A and B internally
+X = DataFrame(rand(du, 2 * n_samples, n_factors), factor_names)
+s = CallablePickAndFreezeSample(X)
+Φₙ, Φ²ₙ = analyze(m, s)
 ```
 
 $(FIELDS)
@@ -100,6 +115,18 @@ struct CallablePickAndFreezeSample
 
         X, p = _build_pick_freeze_block(A, B; rng=rng)
         return new(X, p)
+    end
+
+    function CallablePickAndFreezeSample(
+        X::DataFrame; conditional_sampler=nothing, rng::AbstractRNG=default_rng()
+    )
+        n = size(X, 1)
+        iseven(n) || throw(ArgumentError(
+            "X must have an even number of rows to split into two independent samples, got $n",
+        ))
+        half = n ÷ 2
+        A, B = X[1:half, :], X[(half + 1):end, :]
+        return CallablePickAndFreezeSample(A, B; conditional_sampler=conditional_sampler, rng=rng)
     end
 
     function CallablePickAndFreezeSample(

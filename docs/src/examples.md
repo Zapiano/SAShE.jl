@@ -30,6 +30,23 @@ S = CallablePickAndFreezeSample(X1, X2)
 SAShE.shapley_effects(Φₙ)
 ```
 
+If you already have a single, even-numbered i.i.d. dataset rather than two separate samples, pass it directly — `CallablePickAndFreezeSample` splits it into two halves for you:
+
+```@example ex_model_known_pf_split
+using SAShE, DataFrames, Distributions, Random
+Random.seed!(1)
+
+ishigami(x) = (1 + 0.1x[3]^4) * sin(x[1]) + 7 * sin(x[2])^2
+
+d = Uniform(-π, π)
+X = DataFrame(rand(d, 4000, 3), [:x1, :x2, :x3])  # one combined, even-numbered dataset
+
+model = CallableModel(ishigami)
+S = CallablePickAndFreezeSample(X)
+Φₙ, Φ²ₙ, Yₙ = analyze(model, S)
+SAShE.shapley_effects(Φₙ)
+```
+
 Dependent inputs use the same type, with a `conditional_sampler` — see `CallablePickAndFreezeSample`'s docstring for the expected signature.
 
 ## Model, known distribution — double Monte Carlo

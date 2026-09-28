@@ -97,6 +97,21 @@ end
     @test S1.samples == S2.samples
 end
 
+@testset "CallablePickAndFreezeSample(X): splits a single dataset into A/B" begin
+    du = Uniform(-π, π)
+    X = DataFrame(rand(du, 100, 3), [:x1, :x2, :x3])
+    n = size(X, 1) ÷ 2
+    A, B = X[1:n, :], X[(n + 1):end, :]
+
+    # Splitting X must match calling (A, B) directly on the same halves.
+    S1 = CallablePickAndFreezeSample(X; rng=Xoshiro(9))
+    S2 = CallablePickAndFreezeSample(A, B; rng=Xoshiro(9))
+    @test S1.permutations == S2.permutations
+    @test S1.samples == S2.samples
+
+    @test_throws ArgumentError CallablePickAndFreezeSample(X[1:(end - 1), :])
+end
+
 @testset "QuasiMonteCarloSampling rejects deterministic low-discrepancy algorithms" begin
     # Deterministic low-discrepancy sequences give silently wrong answers for BOTH
     # estimators, so they're rejected at construction rather than at a usage site:
