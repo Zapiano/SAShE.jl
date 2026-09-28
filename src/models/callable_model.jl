@@ -60,8 +60,6 @@ Tuple `(Φₙ, Φ²ₙ, Yₙ)`:
       than derived from the double-Monte-Carlo estimator being tested, so a match mainly
       confirms `N_V` is large enough for that estimate to have converged, not that the
       inner variance computation is correct — see [Deliberate deviations](@ref).
-
-See the [References](@ref) page for the full citations behind [2] and [4].
 """
 function analyze(m::CallableModel, s::CallablePickAndFreezeSample)
     Y = pmap(row -> m.func(collect(row)), eachrow(s.samples))
@@ -136,6 +134,7 @@ function analyze(m::CallableModel, s::CallableDoubleMonteCarloSample)
 
         prevW = 0.0
         for j ∈ 1:n_factors
+            # ? W represents the cost function of the coalision including factor j
             W = if j == n_factors
                 var_y
             else

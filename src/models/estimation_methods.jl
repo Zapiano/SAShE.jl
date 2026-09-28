@@ -34,7 +34,5 @@ holds.
     [`DataModel`](@ref) only implements [`PickAndFreeze`](@ref) so far, nothing currently
     accepts this value — it is a placeholder for `analyze(::DataModel, n, ::DoubleMonteCarlo)`.
     Passing it to today's `analyze` raises a `MethodError`.
-
-See the [References](@ref) page for the full citation behind [2].
 """
 struct DoubleMonteCarlo <: EstimationMethod end

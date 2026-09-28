@@ -162,8 +162,6 @@ row layout above); the values inside `samples` are still trusted, not re-derived
 - `samples` : Pre-built sample table (the row layout above), one row per evaluation
   (second constructor only).
 - `permutations` : The permutation matrix used to build `samples` (second constructor only).
-
-See the [References](@ref) page for the full citation behind [2].
 """
 struct CallableDoubleMonteCarloSample
     samples::DataFrame
@@ -173,8 +171,11 @@ struct CallableDoubleMonteCarloSample
     N_I::Int64
 
     function CallableDoubleMonteCarloSample(
-        samples::DataFrame, permutations::Matrix{Int64},
-        N_V::Integer, N_O::Integer, N_I::Integer,
+        samples::DataFrame,
+        permutations::Matrix{Int64},
+        N_V::Integer,
+        N_O::Integer,
+        N_I::Integer,
     )
         _validate_double_monte_carlo_block(samples, permutations, N_V, N_O, N_I)
         return new(samples, permutations, N_V, N_O, N_I)
@@ -258,7 +259,7 @@ end
 Interleave an `A`/`B` sample pair into the pick-and-freeze block structure `analyze` assumes
 — one untouched `A` row per base sample, followed by `d` rows progressively swapped to `B`
 following a permutation (see [`_validate_pick_freeze_block`](@ref) for the shape this
-produces, and the "What is `Z`?" section of [How it works](@ref) for the row layout).
+produces, and the "What is `Z`?" section of [Concepts](@ref) for the row layout).
 
 Supports block generation with and without a pre-determined permutation matrix.
 
@@ -499,4 +500,3 @@ function _conditionally_resample!(
 
     return Z
 end
-

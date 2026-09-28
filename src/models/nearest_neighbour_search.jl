@@ -9,9 +9,10 @@ Scale each column (coordinate) of `X` by its own sample standard deviation. Note
 divides but does **not** centre — Euclidean distance is translation-invariant, so centring
 would be wasted work; the columns are therefore *not* z-scores despite the function's name.
 
-Coordinates handed to nearest-neighbour search are not assumed to share a common scale —
-see the [Dataset-only workflow](@ref) page's Caveats section for why standardized Euclidean
-(not Mahalanobis) is the default.
+Coordinates handed to nearest-neighbour search are not assumed to share a common scale, so
+standardized Euclidean is the default — unweighted Euclidean would let whichever coordinate
+has the largest variance dominate the search. This accounts for scale but not correlation
+between coordinates (a Mahalanobis-distance option, accounting for both, is planned).
 
 A constant column (`σ = 0`) is left unscaled rather than dividing by zero: every row shares
 the same value there, so it contributes exactly zero to every pairwise distance regardless
@@ -77,8 +78,6 @@ column is `NaN`, and `NaN == 0` is false) and silently turn every distance into 
 
 # Returns
 Vector of `k` row indices, in `1:size(X, 1)`, ordered nearest to farthest, excluding `l`.
-
-See the [References](@ref) page for the full citation behind [1].
 """
 function _nearest_neighbour_indices(
     X::AbstractMatrix, l::Integer, coords::AbstractVector{<:Integer}, k::Integer;

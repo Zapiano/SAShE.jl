@@ -34,8 +34,6 @@ happens during the walk and only matters when the dataset has exact ties; see
 - `references` : Reference row index into `X` to use for each permutation, instead of drawing
   new ones (length `n_permutations`, values in `1:size(X, 1)`).
 - `rng` : Random number generator (keyword, optional; first form only).
-
-See the [References](@ref) page for the full citation behind [1].
 """
 struct MixPickAndFreezeSample
     X::DataFrame
@@ -82,8 +80,6 @@ of time rather than inside `analyze`.
 - `references` : Reference row index into `X` to use for each permutation, instead of drawing
   new ones.
 - `rng` : Random number generator (keyword, optional; first form only).
-
-See the [References](@ref) page for the full citation behind [1].
 """
 struct MixDoubleMonteCarloSample
     X::DataFrame

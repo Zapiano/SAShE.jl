@@ -17,8 +17,6 @@ abstract type SamplingStrategy end
 
 Draw factor values by ordinary i.i.d. Monte Carlo (`rand`) — the draw mechanism the
 pick-and-freeze and double Monte Carlo convergence results ([1], [2], [4]) are stated for.
-
-See the [References](@ref) page for the full citations behind [1], [2], and [4].
 """
 struct MonteCarloSampling <: SamplingStrategy end
 
@@ -77,8 +75,6 @@ demonstrated here. Treat results under this strategy as exploratory.
 
 # Arguments
 - `algorithm` : A `QuasiMonteCarlo.RandomSamplingAlgorithm` instance.
-
-See the [References](@ref) page for the full citations behind [1], [2], and [4].
 """
 struct QuasiMonteCarloSampling{A <: QMC.SamplingAlgorithm} <: SamplingStrategy
     algorithm::A

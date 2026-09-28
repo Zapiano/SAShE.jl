@@ -116,8 +116,6 @@ Tuple `(Φₙ, Φ²ₙ, Yₙ)`, matching
       adaptively via nearest-neighbour search rather than evaluating a pre-built table, so
       there is no table row for each entry to align with. It's provided for the same reason:
       diagnostics and sanity checks, not for indexing back into `sample.X`.
-
-See the [References](@ref) page for the full citations behind [1] and [2].
 """
 function analyze(
     model::MixModel, sample::MixPickAndFreezeSample;
@@ -250,8 +248,6 @@ substituting it — see issue #29 for the optimization this leaves on the table.
 A `Tuple{Float64,Vector{Float64}}`: the estimate of `V_u = Var(E(Y | X_u))`, and the two
 `func` values (`[func(x_s), func(hybrid)]`) it was computed from — the latter is for
 [`analyze`](@ref)'s `Yₙ` return value, not part of the estimator itself.
-
-See the [References](@ref) page for the full citation behind [1].
 """
 function _nearest_neighbour_mix_pick_freeze(
     func, X::AbstractMatrix, Ȳ::Real, s::Integer, u::AbstractVector{<:Integer};
@@ -297,8 +293,6 @@ neighbours are queried.
 A `Tuple{Float64,Vector{Float64}}`: the estimate of `c(u) = E(Var(Y | X₋ᵤ))`, and the `N_I`
 `func` values it was computed from — the latter is for [`analyze`](@ref)'s `Yₙ` return
 value, not part of the estimator itself.
-
-See the [References](@ref) page for the full citation behind [1].
 """
 function _nearest_neighbour_mix_double_monte_carlo(
     func, X::AbstractMatrix, s::Integer, u::AbstractVector{<:Integer}, N_I::Integer;
