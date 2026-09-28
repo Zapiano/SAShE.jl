@@ -1,14 +1,57 @@
 # Examples
 
-One example per combination of *data setting* and *estimation method* — click a cell to jump to its section.
+This page provides a comprehensive list of examples comprising all combinations of *data settings* and *estimation methods* (see [Table 1](index.md#table-1)).
 
-**Table 1** (as on the home page). Click a cell for its example or status.
 
-| What you have | Pick-and-freeze | Double Monte Carlo |
-| :-- | :-- | :-- |
-| Model, known-distribution inputs | [✅ Example](@ref "Model, known distribution — pick-and-freeze") | [✅ Example](@ref "Model, known distribution — double Monte Carlo") |
-| Model, real-data inputs ('mix') | [✅ Example](@ref "Model, real data ('mix') — pick-and-freeze") | [✅ Example](@ref "Model, real data ('mix') — double Monte Carlo") |
-| No model — real data throughout | [✅ Example](@ref "No model, real data — pick-and-freeze") | [🔲 Planned](@ref "No model, real data — double Monte Carlo") |
+```@raw html
+<style>
+  #examples-table td.example-cell {
+    padding: 0;
+    transition: background-color 0.1s ease-in-out;
+  }
+  #examples-table td.example-cell:hover {
+    background-color: rgba(128, 128, 128, 0.2);
+  }
+  #examples-table td.example-cell a {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    padding: 0.5em 0.75em;
+    text-decoration: none;
+    color: inherit;
+  }
+</style>
+<table id="examples-table">
+  <thead>
+    <tr>
+      <th rowspan="2" style="vertical-align: bottom;"><em>Data setting</em></th>
+      <th colspan="2" align="center"><em>Estimation method</em></th>
+    </tr>
+    <tr>
+      <th align="left"><em>Pick-and-Freeze</em></th>
+      <th align="left"><em>Double Monte Carlo</em></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>CallableModel</code></td>
+      <td class="example-cell"><a href="#Model,-known-distribution-—-pick-and-freeze"><code>CallableModel</code> using <em>Pick-and-Freeze</em></a></td>
+      <td class="example-cell"><a href="#Model,-known-distribution-—-double-Monte-Carlo"><code>CallableModel</code> using <em>Double Monte Carlo</em></a></td>
+    </tr>
+    <tr>
+      <td><code>MixModel</code></td>
+      <td class="example-cell"><a href="#Model,-real-data-('mix')-—-pick-and-freeze"><code>MixModel</code> using <em>Pick-and-Freeze</em></a></td>
+      <td class="example-cell"><a href="#Model,-real-data-('mix')-—-double-Monte-Carlo"><code>MixModel</code> using <em>Double Monte Carlo</em></a></td>
+    </tr>
+    <tr>
+      <td><code>DataModel</code></td>
+      <td class="example-cell"><a href="#No-model,-real-data-—-pick-and-freeze"><code>DataModel</code> using <em>Pick-and-Freeze</em></a></td>
+      <td class="example-cell"><a href="#No-model,-real-data-—-double-Monte-Carlo"><code>DataModel</code> using <em>Double Monte Carlo</em> (🔲 not yet implemented)</a></td>
+    </tr>
+  </tbody>
+</table>
+```
 
 ## Model, known distribution — pick-and-freeze
 

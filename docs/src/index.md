@@ -14,7 +14,7 @@ The first two *data settings* run through `analyze(model, sample)`, where the mo
 **Table 1.** What to pass, which paper implements it, and what it costs for each *data setting* (rows) and *estimation method* (columns).
 
 ```@raw html
-<table>
+<table id="table-1">
   <thead>
     <tr>
       <th rowspan="2" style="vertical-align: bottom;"><em>Data setting</em></th>
