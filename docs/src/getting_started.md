@@ -104,9 +104,9 @@ The exact Shapley effects for the Ishigami function with `a = 7`, `b = 0.1` and 
 These come from the function's ANOVA decomposition, which has only three non-zero components:
 
 ```math
-\\sigma^2_1 = \\tfrac{1}{2}\\left(1 + \\tfrac{b\\pi^4}{5}\\right)^2, \\qquad
-\\sigma^2_2 = \\tfrac{a^2}{8}, \\qquad
-\\sigma^2_{13} = b^2\\pi^8\\left(\\tfrac{1}{18} - \\tfrac{1}{50}\\right)
+\sigma^2_1 = \tfrac{1}{2}\left(1 + \tfrac{b\pi^4}{5}\right)^2, \qquad
+\sigma^2_2 = \tfrac{a^2}{8}, \qquad
+\sigma^2_{13} = b^2\pi^8\left(\tfrac{1}{18} - \tfrac{1}{50}\right)
 ```
 
 with `σ²₃ = σ²₁₂ = σ²₂₃ = σ²₁₂₃ = 0`. Owen's decomposition, `φᵢ = Σ_{u ∋ i} σ²_u / |u|`, then gives `φ₁ = σ²₁ + σ²₁₃/2`, `φ₂ = σ²₂`, `φ₃ = σ²₁₃/2`. The same values and derivation are used as the reference throughout the test suite (`test/reference_values.jl`).
