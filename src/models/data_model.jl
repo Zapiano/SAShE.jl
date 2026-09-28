@@ -31,13 +31,15 @@ end
 Estimate Shapley effects from a fixed dataset `(X, Y)` alone — no callable model, no
 joint-distribution model. `estimator` must be given explicitly — for now the only
 implemented one is [`PickAndFreeze()`](@ref): [1]'s nearest-neighbour "knn" Pick-and-Freeze
-estimator (§6.1.2, Eq. 23) combined with [2]'s random-permutation W-aggregation procedure
-(Eq. 14) — unnormalized, though: Eq. (14) divides by `Var(Y)` to return effects summing to
-1, while this returns `Φₙ` summing to `Var(Y)` instead, so `sum(Φ) ≈ var(Y)` works as a
-sanity check (see step 4 of the [Dataset-only workflow](@ref) page). Zero new function
+estimator (§6.1.2, Eq. 23) combined with the random-permutation W-aggregation procedure
+originally from [2], its Eq. 12, in the form [1] states it in §4.2, Eq. 14 — unnormalized,
+though: [1]'s Eq. (14) divides by `Var(Y)` to return effects summing to 1, while this returns
+`Φₙ` summing to `Var(Y)` instead. Note `sum(Φ) == var(Y)` holds
+**exactly** here, by construction (the walk's terminal step is `var(Y)` itself, not a value
+derived from the estimator) — it's not a check on whether the nearest-neighbour estimator
+is working, only on whether the aggregation is wired correctly. Zero new function
 evaluations: every conditional-element estimate reuses `Y` values already present in the
-dataset. See the [Dataset-only workflow](@ref) page for a full walk-through and the
-estimator's caveats.
+dataset.
 
 For each of `n_permutations` random permutations of the factors, a single random reference
 row is drawn from `X`; walking the permutation builds nested coalitions
@@ -54,10 +56,8 @@ Shapley-effect contribution.
 
 # Returns
 Tuple `(Φₙ, Φ²ₙ)`, in the same shape as
-[`analyze(m::CallableModel, s::PickAndFreezeSample)`](@ref) returns — pass to
+[`analyze(m::CallableModel, s::CallablePickAndFreezeSample)`](@ref) returns — pass to
 [`shapley_effects`](@ref) or [`confint`](@ref) as usual.
-
-See the [References](@ref) page for the full citations behind [1] and [2].
 """
 function analyze(
     model::DataModel, n_permutations::Integer, ::PickAndFreeze; rng::AbstractRNG=default_rng()
@@ -110,8 +110,12 @@ zero — i.e. Eq. (23) is `Y[s] · Y[NN₁(s)]`, not the product of two neighbou
 `s`. Pairing `s` with one neighbour (rather than two neighbours, neither of them `s`) is
 what this implements; it also uses one fewer neighbour query per call.
 
-The neighbour count is fixed at 1, not a tunable accuracy/cost knob — see the
-[Dataset-only workflow](@ref) page's Caveats section for why.
+The neighbour count is fixed, not a tunable accuracy/cost knob: one neighbour besides `s`
+itself, which is [1]'s `N_I = 2` (§6.1.2 opens by fixing `N_I` at 2 for the pick-and-freeze
+estimators). It can't be raised: `V_u = Var(E(Y|X_u))` is recovered via the `E[Z₁Z₂] = Z²`
+identity, which only holds for exactly *two* conditionally-independent draws sharing the
+same conditional mean `Z = E(Y|X_u)` — multiplying three or more draws together would
+estimate a different, wrong quantity, not a more accurate `V_u`.
 
 # Arguments
 - `X` : Sample matrix, rows = observations, columns = coordinates.
@@ -124,15 +128,15 @@ The neighbour count is fixed at 1, not a tunable accuracy/cost knob — see the
 
 # Returns
 A single `Float64`: the estimate of V_u = Var(E(Y | X_u)).
-
-See the [References](@ref) page for the full citation behind [1].
 """
 function _nearest_neighbour_pick_freeze(
     X::AbstractMatrix, Y::AbstractVector{<:Real}, Ȳ::Real, s::Integer,
     u::AbstractVector{<:Integer}; rng::AbstractRNG=default_rng(),
 )::Float64
-    # Fixed by the estimator's own structure, not a tunable accuracy knob — see docstring.
-    N_I = 1
-    idx = _nearest_neighbour_indices(X, s, u, N_I; rng=rng)
+    # One neighbour besides `s` itself, i.e. [1]'s N_I = 2 — fixed by the estimator's own
+    # structure, not a tunable accuracy knob. See this function's docstring, and
+    # `_nearest_neighbour_indices`'s for why `k` here is not [1]'s `N_I`.
+    k = 1
+    idx = _nearest_neighbour_indices(X, s, u, k; rng=rng)
     return Y[s] * Y[idx[1]] - Ȳ^2
 end

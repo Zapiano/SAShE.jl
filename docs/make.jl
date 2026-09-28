@@ -7,8 +7,7 @@ makedocs(;
     modules=[SAShE],
     authors="Pedro Ribeiro de Almeida",
     sitename="SAShE.jl",
-    # No API-reference page yet (see docs/src/next_steps.md); re-enable once it exists.
-    checkdocs=:none,
+    checkdocs=:exports,
     format=Documenter.HTML(;
         canonical="https://Zapiano.github.io/SAShE.jl",
         edit_link="main",
@@ -17,11 +16,11 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Getting started" => "getting_started.md",
-        "How it works" => "how_it_works.md",
-        "Dataset-only workflow" => "dataset_only.md",
+        "Concepts" => "concepts.md",
+        "Estimators" => "estimators.md",
         "Examples" => "examples.md",
         "Deliberate deviations" => "deviations.md",
-        "Next steps" => "next_steps.md",
+        "API reference" => "api.md",
         "Naming conventions" => "naming_conventions.md",
         "References" => "references.md",
     ],
