@@ -1,4 +1,4 @@
-# SAShE.jl
+<p align="left"><img style="width: 250px" src=".\docs\assets\logo_name.svg" alt="Alt text"></p>
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16777876.svg)](https://doi.org/10.5281/zenodo.16777876) [![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/JuliaDiff/BlueStyle) [![Docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://Zapiano.github.io/SAShE.jl)
 
