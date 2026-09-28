@@ -2,14 +2,9 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16777876.svg)](https://doi.org/10.5281/zenodo.16777876) [![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/JuliaDiff/BlueStyle) [![Docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://Zapiano.github.io/SAShE.jl)
 
-Sensitivity analysis with **Shapley effects** — a variance-based measure of how much each
-input factor contributes to the variability of a model's output, that sums exactly to the
-total output variance.
+Sensitivity analysis with **Shapley effects** — a variance-based measure of how much each input factor contributes to the variability of a model's output, that sums exactly to the total output variance.
 
-**Full documentation: [Zapiano.github.io/SAShE.jl](https://Zapiano.github.io/SAShE.jl)** —
-start with [Getting started](https://Zapiano.github.io/SAShE.jl/getting_started/) for a
-full walk-through, or [How it works](https://Zapiano.github.io/SAShE.jl/how_it_works/) for
-the algorithm.
+**Full documentation: [Zapiano.github.io/SAShE.jl](https://Zapiano.github.io/SAShE.jl)** — start with [Getting started](https://Zapiano.github.io/SAShE.jl/getting_started/) for a full walk-through, or [Concepts](https://Zapiano.github.io/SAShE.jl/concepts/) for the algorithm.
 
 ## Installation
 
@@ -40,8 +35,7 @@ S = CallablePickAndFreezeSample(X1, X2)
 Φ
 ```
 
-`Φ[i]` is the Shapley effect of factor `i`; `Φlb[i]` and `Φub[i]` bracket its 95%
-confidence interval.
+`Φ[i]` is the Shapley effect of factor `i`; `Φlb[i]` and `Φub[i]` bracket its 95% confidence interval.
 
 ## Contributing
 
@@ -49,5 +43,4 @@ This project uses [BlueStyle](https://domluna.github.io/JuliaFormatter.jl/dev/bl
 
 ## References
 
-See the [References](https://Zapiano.github.io/SAShE.jl/references/) page in the docs for
-citations.
+See the [References](https://Zapiano.github.io/SAShE.jl/references/) page in the docs for citations.

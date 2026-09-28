@@ -1,34 +1,17 @@
 # Getting started
 
-Variance based sensitivity analysis asks: **which input factors actually drive the variability of a
-model's output, and by how much?** ([5] — see [References](@ref)) That matters for deciding which
-inputs are worth measuring more precisely, which ones can be fixed at a nominal value with little
-loss of accuracy, and where a model's behaviour is being driven by an interaction between factors
-rather than any one of them alone.
+Variance based sensitivity analysis asks: **how much each factors contributes to a model's output variability?** ([[5]](@ref References)) That matters for deciding which inputs are worth measuring more precisely, which ones can be fixed at a nominal value with little loss of accuracy, and where a model's behaviour is being driven by an interaction between factors rather than any one of them alone.
 
-**Shapley effects** answer this with a single number per factor, borrowed from
-cooperative game theory: treat each factor as a "player" contributing to the "payoff"
-(the output's variance), and split that payoff fairly among the players based on their
-average marginal contribution across every possible order in which they could be
-revealed. Two properties make this attractive over the classical Sobol' main/total
-effects:
+**Shapley effects** answer this with a single number per factor, borrowed from cooperative game theory: treat each factor as a "player" contributing to the "payoff" (the output's variance), and split that payoff fairly among the players based on their average marginal contribution across every possible order in which they could be revealed. Two properties make this attractive over the classical Sobol' main/total effects:
 
-- **They sum exactly to the total output variance** — nothing is double-counted between
-  interacting factors, and nothing is left unattributed.
-- **They handle interactions and dependent factors** without needing a separate
-  decomposition for each — a factor with zero main effect but a strong interaction
-  still gets a non-zero share.
+- **They sum exactly to the total output variance** — nothing is double-counted between interacting factors, and nothing is left unattributed.
+- **They handle interactions and dependent factors** without needing a separate decomposition for each — a factor with zero main effect but a strong interaction still gets a non-zero share.
 
-The trade-off is cost: computing them exactly means evaluating every possible subset of
-factors, which is intractable beyond a handful of factors. SAShE.jl implements
-Monte Carlo estimators of the Shapley effects that avoid that blow-up (see
-[How it works](@ref)).
+The trade-off is cost: computing them exactly means evaluating every possible subset of factors, which is intractable beyond a handful of factors. SAShE.jl implements Monte Carlo estimators of the Shapley effects that avoid that blow-up (see [Concepts](@ref)).
 
 ## The running example
 
-This page walks through a full analysis of the
-[Ishigami function](https://en.wikipedia.org/wiki/Ishigami_function), a standard
-sensitivity-analysis test case with three independent inputs on `[-π, π]`.
+This page walks through a full analysis of the [Ishigami function](https://en.wikipedia.org/wiki/Ishigami_function), a standard sensitivity-analysis test case with three independent inputs on `[-π, π]`.
 
 ## 1. Define the model
 
@@ -42,14 +25,11 @@ function ishigami(x)
     a, b = 7.0, 0.1
     return (1 + b * x[3]^4) * sin(x[1]) + a * sin(x[2])^2
 end
-nothing # hide
 ```
 
 ## 2. Draw two sample sets
 
-SAShE needs **two** independent sample sets of the same shape, `X1` and `X2` (called `x`
-and `y` in [4] — see [References](@ref)). Each row is one draw of all factors; each column
-is a factor.
+SAShE needs **two** independent sample sets of the same shape, `X1` and `X2` (called `x` and `y` in [[4]](@ref References)). Each row is one draw of all factors; each column is a factor.
 
 ```@example gs
 d = Uniform(-π, π)
@@ -58,17 +38,14 @@ factor_names = [:x1, :x2, :x3]
 
 X1 = DataFrame(rand(d, n_samples, n_factors), factor_names)
 X2 = DataFrame(rand(d, n_samples, n_factors), factor_names)
-nothing # hide
+first(X1, 5)
 ```
 
-Here every factor is independent and uniform. If your factors have different marginal
-distributions, draw each column from its own. If the factors are *dependent* (for example
-one is a function of the others), the sampling needs an extra step — see [Next steps](@ref).
+Here every factor is independent and uniform. If your factors have different marginal distributions, draw each column from its own. If the factors are *dependent* (for example one is a function of the others), the sampling needs an extra step — pass a `conditional_sampler` to `CallablePickAndFreezeSample`.
 
 ## 3. Run the analysis
 
-Wrap the model in a `CallableModel`, build a `CallablePickAndFreezeSample` from your two sample
-sets, then `analyze` them together — `analyze` always takes a model and a sample:
+Wrap the model in a `CallableModel`, build a `CallablePickAndFreezeSample` from your two sample sets, then `analyze` them together — `analyze` always takes a model and a sample:
 
 ```@example gs
 model = CallableModel(ishigami)
@@ -122,9 +99,7 @@ If these disagree by more than a few percent, increase `n_samples`.
 
 ## Interpreting the result
 
-The exact Shapley effects for the Ishigami function with `a = 7`, `b = 0.1` and
-`xᵢ ~ U(-π, π)` are `[6.0327, 6.1250, 1.6869]` for `x1`, `x2`, `x3`, summing to the total
-output variance `13.8446`. The estimates above are a finite-sample approximation of these.
+The exact Shapley effects for the Ishigami function with `a = 7`, `b = 0.1` and `xᵢ ~ U(-π, π)` are `[6.0327, 6.1250, 1.6869]` for `x1`, `x2`, `x3`, summing to the total output variance `13.8446`. The estimates above are a finite-sample approximation of these.
 
 These come from the function's ANOVA decomposition, which has only three non-zero components:
 
@@ -134,11 +109,7 @@ These come from the function's ANOVA decomposition, which has only three non-zer
 \\sigma^2_{13} = b^2\\pi^8\\left(\\tfrac{1}{18} - \\tfrac{1}{50}\\right)
 ```
 
-with `σ²₃ = σ²₁₂ = σ²₂₃ = σ²₁₂₃ = 0`. Owen's decomposition, `φᵢ = Σ_{u ∋ i} σ²_u / |u|`, then
-gives `φ₁ = σ²₁ + σ²₁₃/2`, `φ₂ = σ²₂`, `φ₃ = σ²₁₃/2`. The same values and derivation are used
-as the reference throughout the test suite (`test/reference_values.jl`).
+with `σ²₃ = σ²₁₂ = σ²₂₃ = σ²₁₂₃ = 0`. Owen's decomposition, `φᵢ = Σ_{u ∋ i} σ²_u / |u|`, then gives `φ₁ = σ²₁ + σ²₁₃/2`, `φ₂ = σ²₂`, `φ₃ = σ²₁₃/2`. The same values and derivation are used as the reference throughout the test suite (`test/reference_values.jl`).
 
 - `x1` and `x2` contribute almost equally.
-- `x3` has **zero main effect** — on its own it explains none of the variance — yet its
-  Shapley effect is clearly non-zero, because it interacts with `x1`. This is exactly the
-  kind of structure Shapley effects surface that a main-effect analysis would miss.
+- `x3` has **zero main effect** — on its own it explains none of the variance — yet its Shapley effect is clearly non-zero, because it interacts with `x1`. This is exactly the kind of structure Shapley effects surface that a main-effect analysis would miss.

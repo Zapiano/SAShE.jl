@@ -1,7 +1,6 @@
 # Examples
 
-One example per combination of "what you have" and "which estimation method" — click a
-cell to jump to its section.
+One example per combination of *data setting* and *estimation method* — click a cell to jump to its section.
 
 **Table 1** (as on the home page). Click a cell for its example or status.
 
@@ -31,8 +30,7 @@ S = CallablePickAndFreezeSample(X1, X2)
 SAShE.shapley_effects(Φₙ)
 ```
 
-Dependent inputs use the same type, with a `conditional_sampler` — see the "Dependent
-factors" section of [Next steps](@ref).
+Dependent inputs use the same type, with a `conditional_sampler` — see `CallablePickAndFreezeSample`'s docstring for the expected signature.
 
 ## Model, known distribution — double Monte Carlo
 
@@ -53,17 +51,11 @@ S = CallableDoubleMonteCarloSample(factor_names, dists, 3000, MonteCarloSampling
 SAShE.shapley_effects(Φₙ)
 ```
 
-Unlike pick-and-freeze, this calls the model at genuinely new points — `N_V + m·N_I·N_O·(d-1)`
-evaluations, not reused ones. See [How it works](@ref) for why this estimator exists
-alongside pick-and-freeze rather than replacing it.
+Unlike pick-and-freeze, this calls the model at genuinely new points — `N_V + m·N_I·N_O·(d-1)` evaluations, not reused ones. See [Concepts](@ref) for why this estimator exists alongside pick-and-freeze rather than replacing it.
 
 ## Model, real data ('mix') — pick-and-freeze
 
-`MixModel`. For when a model is callable but its inputs' joint distribution isn't known well
-enough to sample fresh, valid points from — only an existing dataset. A nearest-neighbour
-lookup into that dataset picks a real point to build a synthetic evaluation point from,
-instead of sampling from a known distribution (`CallableModel`) or reusing stored
-outputs (`DataModel`).
+`MixModel`. For when a model is callable but its inputs' joint distribution isn't known well enough to sample fresh, valid points from — only an existing dataset. A nearest-neighbour lookup into that dataset picks a real point to build a synthetic evaluation point from, instead of sampling from a known distribution (`CallableModel`) or reusing stored outputs (`DataModel`).
 
 ```@example ex_mix_pf
 using SAShE, DataFrames, Distributions, Random
@@ -81,15 +73,11 @@ S = MixPickAndFreezeSample(X, Y, 5000)
 SAShE.shapley_effects(Φₙ)
 ```
 
-Unlike `DataModel`'s "knn" estimator, `MixModel` calls `func` at every synthetic point it
-builds — including, faithfully to [1]'s Eq. (22), the reference point itself, whose output
-is already known exactly as `Y[s]`.
+Unlike `DataModel`'s "knn" estimator, `MixModel` calls `func` at every synthetic point it builds — including, faithfully to [[1]](@ref References)'s Eq. (22), the reference point itself, whose output is already known exactly as `Y[s]`.
 
 ## Model, real data ('mix') — double Monte Carlo
 
-`MixModel`, paired with `MixDoubleMonteCarloSample` instead. Its constructor accepts an
-`N_I` keyword (default `3`) controlling how many nearest-neighbour points the inner sample
-variance is built from.
+`MixModel`, paired with `MixDoubleMonteCarloSample` instead. Its constructor accepts an `N_I` keyword (default `3`) controlling how many nearest-neighbour points the inner sample variance is built from.
 
 ```@example ex_mix_dmc
 using SAShE, DataFrames, Distributions, Random
@@ -109,7 +97,7 @@ SAShE.shapley_effects(Φₙ)
 
 ## No model, real data — pick-and-freeze
 
-`DataModel`. Full walk-through: [Dataset-only workflow](@ref).
+`DataModel`.
 
 ```@example ex_nomodel_data_pf
 using SAShE, DataFrames, Distributions, Random

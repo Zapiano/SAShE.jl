@@ -21,8 +21,9 @@ The 95% margin of error (`1.96 × standard error`) of each factor's Shapley effe
 from the sample variance of its per-sample increments — no bootstrapping needed.
 
 The formula treats the columns of `Φₙ` as independent draws, and `Var[Y]` (where an estimator
-uses one) as known. See the [References](@ref) page for the conditions each estimator
-establishes.
+uses one) as known. That independence holds for [`CallableModel`](@ref) but not for
+[`DataModel`](@ref)/[`MixModel`](@ref) — see [Deliberate deviations](@ref) for what that
+costs you.
 
 # Arguments
 - `Φₙ` : Shapley-effect increments, `d × N` — rows are factors, columns are samples (or
