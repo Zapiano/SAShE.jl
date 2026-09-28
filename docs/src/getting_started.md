@@ -11,7 +11,7 @@ The trade-off is cost: computing them exactly means evaluating every possible su
 
 ## The running example
 
-This page walks through a full analysis of the [Ishigami function](https://en.wikipedia.org/wiki/Ishigami_function), a standard sensitivity-analysis test case with three independent inputs on `[-π, π]`.
+This page walks through a full analysis of the [Ishigami function](https://en.wikipedia.org/wiki/Ishigami_function), a standard sensitivity-analysis test case with three independent inputs on `[-π, π]`. This example covers the `CallableModel` *data setting* using Pick-And-Freeze as the *estimation method*. See [Examples](@ref) for a comprehensive list of examples for each combination of *data setting* and *estimation method*.
 
 ## 1. Define the model
 
@@ -112,4 +112,4 @@ These come from the function's ANOVA decomposition, which has only three non-zer
 with `σ²₃ = σ²₁₂ = σ²₂₃ = σ²₁₂₃ = 0`. Owen's decomposition, `φᵢ = Σ_{u ∋ i} σ²_u / |u|`, then gives `φ₁ = σ²₁ + σ²₁₃/2`, `φ₂ = σ²₂`, `φ₃ = σ²₁₃/2`. The same values and derivation are used as the reference throughout the test suite (`test/reference_values.jl`).
 
 - `x1` and `x2` contribute almost equally.
-- `x3` has **zero main effect** — on its own it explains none of the variance — yet its Shapley effect is clearly non-zero, because it interacts with `x1`. This is exactly the kind of structure Shapley effects surface that a main-effect analysis would miss.
+- `x3` has **zero main effect** — on its own it explains none of the variance — yet its Shapley effect is clearly non-zero, because it interacts with `x1`.
