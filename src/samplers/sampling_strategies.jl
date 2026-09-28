@@ -116,7 +116,9 @@ calling `strategy` once per block) matters for independence.
 `Vector` of `length(block_sizes)` matrices, block `k` sized `block_sizes[k] × length(factor_dist)`.
 """
 function _draw_factor_blocks(
-    ::MonteCarloSampling, factor_dist::Vector{<:Distribution}, block_sizes::Vector{<:Integer};
+    ::MonteCarloSampling,
+    factor_dist::Vector{<:Distribution},
+    block_sizes::Vector{<:Integer};
     rng::AbstractRNG=default_rng(),
 )::Vector{Matrix{Float64}}
     return map(block_sizes) do n
@@ -125,8 +127,10 @@ function _draw_factor_blocks(
 end
 
 function _draw_factor_blocks(
-    strategy::QuasiMonteCarloSampling, factor_dist::Vector{<:Distribution},
-    block_sizes::Vector{<:Integer}; rng::AbstractRNG=default_rng(),
+    strategy::QuasiMonteCarloSampling,
+    factor_dist::Vector{<:Distribution},
+    block_sizes::Vector{<:Integer};
+    rng::AbstractRNG=default_rng(),
 )::Vector{Matrix{Float64}}
     n_factors = length(factor_dist)
     total = sum(block_sizes)
