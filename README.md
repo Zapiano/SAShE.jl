@@ -4,8 +4,6 @@
 
 Sensitivity analysis with **Shapley effects** — a variance-based measure of how much each input factor contributes to the variability of a model's output, that sums exactly to the total output variance.
 
-**Full documentation: [Zapiano.github.io/SAShE.jl](https://Zapiano.github.io/SAShE.jl)** — start with [Getting started](https://Zapiano.github.io/SAShE.jl/getting_started/) for a full walk-through, or [Concepts](https://Zapiano.github.io/SAShE.jl/concepts/) for the algorithm.
-
 ## Installation
 
 ```julia
