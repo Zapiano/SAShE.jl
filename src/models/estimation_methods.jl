@@ -27,12 +27,8 @@ each coalition's cost via a genuinely new inner/outer sampling procedure, rather
 reusing paired samples. For a [`CallableModel`](@ref), this is selected implicitly by
 pairing it with a [`CallableDoubleMonteCarloSample`](@ref), built from per-factor
 distributions since it draws far more samples than pick-and-freeze's paired-sample table
-holds.
-
-!!! note "No `analyze` method dispatches on this singleton yet"
-    Because the `CallableModel` path selects double Monte Carlo from the *sample's* type, and
-    [`DataModel`](@ref) only implements [`PickAndFreeze`](@ref) so far, nothing currently
-    accepts this value — it is a placeholder for `analyze(::DataModel, n, ::DoubleMonteCarlo)`.
-    Passing it to today's `analyze` raises a `MethodError`.
+holds. Pass this explicitly to [`DataModel`](@ref)'s `analyze` to run [1]'s "knn" double
+Monte-Carlo estimator (§6.1.1, Eq. 18) instead — see
+[`analyze(model::DataModel, n_permutations::Integer, ::DoubleMonteCarlo)`](@ref).
 """
 struct DoubleMonteCarlo <: EstimationMethod end

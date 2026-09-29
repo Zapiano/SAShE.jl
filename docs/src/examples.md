@@ -47,7 +47,7 @@ This page provides a comprehensive list of examples comprising all combinations 
     <tr>
       <td><code>DataModel</code></td>
       <td class="example-cell"><a href="#No-model,-real-data-—-pick-and-freeze"><code>DataModel</code> using <em>Pick-and-Freeze</em></a></td>
-      <td class="example-cell"><a href="#No-model,-real-data-—-double-Monte-Carlo"><code>DataModel</code> using <em>Double Monte Carlo</em> (🔲 not yet implemented)</a></td>
+      <td class="example-cell"><a href="#No-model,-real-data-—-double-Monte-Carlo"><code>DataModel</code> using <em>Double Monte Carlo</em></a></td>
     </tr>
   </tbody>
 </table>
@@ -182,4 +182,23 @@ Zero new evaluations — every estimate reuses a `Y` value already present in th
 
 ## No model, real data — double Monte Carlo
 
-🔲 Not yet implemented.
+`DataModel`.
+
+```@example ex_nomodel_data_dmc
+using SAShE, DataFrames, Distributions, Random
+Random.seed!(3)
+
+ishigami(x) = (1 + 0.1x[3]^4) * sin(x[1]) + 7 * sin(x[2])^2
+
+d = Uniform(-π, π)
+X = DataFrame(rand(d, 5000, 3), [:x1, :x2, :x3])
+Y = map(row -> ishigami(collect(row)), eachrow(X))
+
+model = DataModel(X, Y)
+Φₙ, Φ²ₙ = analyze(model, 5000, DoubleMonteCarlo())
+SAShE.shapley_effects(Φₙ)
+```
+
+Zero new evaluations here too — every coalition's sample variance is built from `Y` values
+already present in the dataset, via `N_I` nearest neighbours (default `N_I=3`; pass
+`N_I=...` to tune it).
