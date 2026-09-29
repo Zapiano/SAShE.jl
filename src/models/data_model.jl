@@ -34,11 +34,12 @@ joint-distribution model — via [1]'s nearest-neighbour "knn" Pick-and-Freeze e
 from [2], its Eq. 12, in the form [1] states it in §4.2, Eq. 14 — unnormalized, though:
 [1]'s Eq. (14) divides by `Var(Y)` to return effects summing to 1, while this returns
 `Φₙ` summing to `Var(Y)` instead. Note `sum(Φ) == var(Y)` holds
-**exactly** here, by construction (the walk's terminal step is `var(Y)` itself, not a value
-derived from the estimator) — it's not a check on whether the nearest-neighbour estimator
-is working, only on whether the aggregation is wired correctly. Zero new function
-evaluations: every conditional-element estimate reuses `Y` values already present in the
-dataset.
+**exactly** here, by construction: [1]'s Remark 2 states `W_{[1:p]} = Var(Y)` is known and
+licenses using it directly rather than estimating it, so the walk's terminal step is `var(Y)`
+itself, not a value derived from the estimator — this makes `sum(Φ) == var(Y)` a check on
+whether the aggregation is wired correctly, not on whether the nearest-neighbour estimator is
+working. Zero new function evaluations: every conditional-element estimate reuses `Y` values
+already present in the dataset.
 
 For each of `n_permutations` random permutations of the factors, a single random reference
 row is drawn from `X`; walking the permutation builds nested coalitions
@@ -155,6 +156,13 @@ procedure. Zero new function evaluations, exactly as the Pick-and-Freeze method 
 coalition's intermediate value reuses `Y` values already present in the dataset, this time via
 [`_nearest_neighbour_double_monte_carlo`](@ref) rather than
 [`_nearest_neighbour_pick_freeze`](@ref).
+
+As with [`analyze(model::DataModel, n_permutations::Integer, ::PickAndFreeze)`](@ref),
+`sum(Φ) == var(Y)` holds **exactly** here, by construction: [1]'s Remark 2 states
+`W_{[1:p]} = Var(Y)` is known and licenses using it directly rather than estimating it, so the
+walk's terminal step is `var(Y)` itself, not a value derived from the estimator — this makes
+`sum(Φ) == var(Y)` a check on whether the aggregation is wired correctly, not on whether the
+nearest-neighbour estimator is working.
 
 # Arguments
 - `model` : The dataset to analyze, wrapped in a [`DataModel`](@ref).
