@@ -29,6 +29,8 @@ end
 """
     analyze(m::CallableModel, s::CallablePickAndFreezeSample)::Tuple{Matrix{Float64},Matrix{Float64},Vector}
     analyze(m::CallableModel, s::CallableDoubleMonteCarloSample)::Tuple{Matrix{Float64},Matrix{Float64},Vector}
+    analyze(s::CallablePickAndFreezeSample, Y::AbstractVector{<:Real})::Tuple{Matrix{Float64},Matrix{Float64},Vector}
+    analyze(s::CallableDoubleMonteCarloSample, Y::AbstractVector{<:Real})::Tuple{Matrix{Float64},Matrix{Float64},Vector}
 
 Run `m.func` over every row of `s.samples` (in parallel, via `pmap`), then estimate Shapley
 effects. Which estimator runs is determined entirely by `s`'s type — there is no
@@ -41,10 +43,21 @@ effects. Which estimator runs is determined entirely by `s`'s type — there is 
   because this cost function's estimator is unbiased for any sample size, unlike the
   alternative `Var[E[Y|Xᵤ]]` pick-and-freeze relies on.
 
+The last two forms skip calling `m.func` (and so need no `CallableModel` at all) — pass
+`Y` directly when you've already evaluated `s.samples` yourself, e.g. via an external
+simulator, a batch/cluster job, or anything else that doesn't fit calling a plain Julia
+function once per row from inside `analyze`. `Y[i]` must be the evaluation of row `i` of
+`s.samples`, in that exact order — only `length(Y)` is checked against `s.samples`'s row
+count, the correspondence itself is trusted, not re-derived (the same trust boundary
+[`CallablePickAndFreezeSample(samples, permutations)`](@ref)'s docstring already documents
+for a hand-built `samples` table).
+
 # Arguments
-- `m` : The model to run, wrapped in a [`CallableModel`](@ref).
-- `s` : The sample table to evaluate `m.func` over, wrapped in a
-  [`CallablePickAndFreezeSample`](@ref) or a [`CallableDoubleMonteCarloSample`](@ref).
+- `m` : The model to run, wrapped in a [`CallableModel`](@ref) (first two forms only).
+- `s` : The sample table to evaluate, wrapped in a [`CallablePickAndFreezeSample`](@ref) or
+  a [`CallableDoubleMonteCarloSample`](@ref).
+- `Y` : Already-computed evaluations of `s.samples`, one per row, in row order (last two
+  forms only).
 
 # Returns
 Tuple `(Φₙ, Φ²ₙ, Yₙ)`:
@@ -52,20 +65,50 @@ Tuple `(Φₙ, Φ²ₙ, Yₙ)`:
     - Φₙ : Per-sample Shapley-effect increments — pass to [`shapley_effects`](@ref) or
       [`confint`](@ref) for final effects and confidence bounds.
     - Φ²ₙ : Their squares, used by the same functions.
-    - Yₙ : `m.func` evaluated at every row of `s.samples`, in case you want it. With
-      `CallablePickAndFreezeSample`, `sum(Φ)` vs. `var(Yₙ)` is a genuine (if noisy) check on
-      the estimator, since the walk telescopes through real evaluations end to end — see
-      [Getting started](@ref)'s step 5. With `CallableDoubleMonteCarloSample`, it's much
-      weaker: the walk's terminal step is `var(Y[1:N_V])`, computed once up front rather
-      than derived from the double-Monte-Carlo estimator being tested, so a match mainly
-      confirms `N_V` is large enough for that estimate to have converged, not that the
+    - Yₙ : Every row of `s.samples` evaluated (via `m.func`, or the `Y` you supplied,
+      unchanged). With `CallablePickAndFreezeSample`, `sum(Φ)` vs. `var(Yₙ)` is a genuine (if
+      noisy) check on the estimator, since the walk telescopes through real evaluations end
+      to end — see [Getting started](@ref)'s step 5. With `CallableDoubleMonteCarloSample`,
+      it's much weaker: the walk's terminal step is `var(Y[1:N_V])`, computed once up front
+      rather than derived from the double-Monte-Carlo estimator being tested, so a match
+      mainly confirms `N_V` is large enough for that estimate to have converged, not that the
       inner variance computation is correct — see [Deliberate deviations](@ref).
+
+# Examples
+```julia
+# Evaluate s.samples yourself instead of handing SAShE a callable func:
+S = CallablePickAndFreezeSample(X1, X2)
+Y = my_external_evaluator(S.samples)  # one value per row, in row order
+Φₙ, Φ²ₙ, Yₙ = analyze(S, Y)
+```
 """
 function analyze(m::CallableModel, s::CallablePickAndFreezeSample)
     Y = pmap(row -> m.func(collect(row)), eachrow(s.samples))
+    return _pick_freeze_shapley_increments(s.samples, s.permutations, Y)
+end
+function analyze(s::CallablePickAndFreezeSample, Y::AbstractVector{<:Real})
+    _validate_precomputed_Y(s.samples, Y)
+    return _pick_freeze_shapley_increments(s.samples, s.permutations, Y)
+end
+function analyze(m::CallableModel, s::CallableDoubleMonteCarloSample)
+    Y = pmap(row -> m.func(collect(row)), eachrow(s.samples))
+    return _double_monte_carlo_shapley_increments(s.N_V, s.N_O, s.N_I, s.permutations, Y)
+end
+function analyze(s::CallableDoubleMonteCarloSample, Y::AbstractVector{<:Real})
+    _validate_precomputed_Y(s.samples, Y)
+    return _double_monte_carlo_shapley_increments(s.N_V, s.N_O, s.N_I, s.permutations, Y)
+end
 
-    X = s.samples
-    perms = s.permutations
+function _validate_precomputed_Y(samples::DataFrame, Y::AbstractVector{<:Real})
+    size(samples, 1) == length(Y) || throw(
+        ArgumentError(
+            "Y must have one entry per row of s.samples: expected $(size(samples, 1)), got $(length(Y))",
+        ),
+    )
+    return nothing
+end
+
+function _pick_freeze_shapley_increments(X::DataFrame, perms::Matrix{Int64}, Y)
     n_var_params = size(X, 2)
     n_base_samples = size(perms, 1)
 
@@ -113,11 +156,10 @@ function analyze(m::CallableModel, s::CallablePickAndFreezeSample)
 
     return Matrix(Φₙ_increments'), Matrix(Φₙ²_increments'), Y
 end
-function analyze(m::CallableModel, s::CallableDoubleMonteCarloSample)
-    Y = pmap(row -> m.func(collect(row)), eachrow(s.samples))
 
-    N_V, N_O, N_I = s.N_V, s.N_O, s.N_I
-    perms = s.permutations
+function _double_monte_carlo_shapley_increments(
+    N_V::Int64, N_O::Int64, N_I::Int64, perms::Matrix{Int64}, Y
+)
     n_perms, n_factors = size(perms)
 
     var_y = var(@view Y[1:N_V])

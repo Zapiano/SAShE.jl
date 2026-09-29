@@ -70,6 +70,8 @@ X2 = DataFrame(rand(d, 2000, 3), [:x1, :x2, :x3])
 model = CallableModel(ishigami)
 S = CallablePickAndFreezeSample(X1, X2)
 Φₙ, Φ²ₙ, Yₙ = analyze(model, S)
+# Already evaluated S.samples yourself (e.g. an external simulator)? Skip `model` entirely:
+# Φₙ, Φ²ₙ, Yₙ = analyze(S, Y)   # Y: one value per row of S.samples, in row order
 SAShE.shapley_effects(Φₙ)
 ```
 
@@ -108,6 +110,8 @@ dists = fill(Uniform(-π, π), 3)
 model = CallableModel(ishigami)
 S = CallableDoubleMonteCarloSample(factor_names, dists, 3000, MonteCarloSampling())
 Φₙ, Φ²ₙ, Yₙ = analyze(model, S)
+# Already evaluated S.samples yourself (e.g. an external simulator)? Skip `model` entirely:
+# Φₙ, Φ²ₙ, Yₙ = analyze(S, Y)   # Y: one value per row of S.samples, in row order
 SAShE.shapley_effects(Φₙ)
 ```
 
