@@ -26,14 +26,13 @@ struct DataModel
 end
 
 """
-    analyze(model::DataModel, n_permutations::Integer, estimator::EstimationMethod; rng=default_rng())::Tuple{Matrix{Float64},Matrix{Float64}}
+    analyze(model::DataModel, n_permutations::Integer, ::PickAndFreeze; rng=default_rng())::Tuple{Matrix{Float64},Matrix{Float64}}
 
 Estimate Shapley effects from a fixed dataset `(X, Y)` alone — no callable model, no
-joint-distribution model. `estimator` must be given explicitly — for now the only
-implemented one is [`PickAndFreeze()`](@ref): [1]'s nearest-neighbour "knn" Pick-and-Freeze
-estimator (§6.1.2, Eq. 23) combined with the random-permutation W-aggregation procedure
-originally from [2], its Eq. 12, in the form [1] states it in §4.2, Eq. 14 — unnormalized,
-though: [1]'s Eq. (14) divides by `Var(Y)` to return effects summing to 1, while this returns
+joint-distribution model — via [1]'s nearest-neighbour "knn" Pick-and-Freeze estimator
+(§6.1.2, Eq. 23) combined with the random-permutation W-aggregation procedure originally
+from [2], its Eq. 12, in the form [1] states it in §4.2, Eq. 14 — unnormalized, though:
+[1]'s Eq. (14) divides by `Var(Y)` to return effects summing to 1, while this returns
 `Φₙ` summing to `Var(Y)` instead. Note `sum(Φ) == var(Y)` holds
 **exactly** here, by construction (the walk's terminal step is `var(Y)` itself, not a value
 derived from the estimator) — it's not a check on whether the nearest-neighbour estimator
@@ -47,11 +46,15 @@ row is drawn from `X`; walking the permutation builds nested coalitions
 [`_nearest_neighbour_pick_freeze`](@ref). Consecutive differences accumulate into each factor's
 Shapley-effect contribution.
 
+`DataModel` also implements [`DoubleMonteCarlo`](@ref) — see
+[`analyze(model::DataModel, n_permutations::Integer, ::DoubleMonteCarlo)`](@ref). An
+`EstimationMethod` value is required explicitly here; there is no default, see
+[Deliberate deviations](@ref).
+
 # Arguments
 - `model` : The dataset to analyze, wrapped in a [`DataModel`](@ref).
 - `n_permutations` : Number of random permutations to average over — an accuracy/budget
   knob; more permutations means lower estimator variance.
-- `estimator` : Estimation method — see [`EstimationMethod`](@ref).
 - `rng` : Random number generator (keyword, optional).
 
 # Returns
@@ -248,5 +251,10 @@ function _nearest_neighbour_double_monte_carlo(
 )::Float64
     notU = setdiff(1:size(X, 2), u)
     neighbours = _nearest_neighbour_indices(X, s, notU, N_I - 1; rng=rng)
-    return var(vcat(Y[s], Y[neighbours]))
+
+    y_vals = Vector{Float64}(undef, N_I)
+    y_vals[1] = Y[s]
+    y_vals[2:end] .= @view Y[neighbours]
+
+    return var(y_vals)
 end
