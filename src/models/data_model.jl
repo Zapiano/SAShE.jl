@@ -80,9 +80,10 @@ function analyze(
         s = rand(rng, 1:n_samples)
 
         prevW = 0.0
-        u = Int64[]
         for i ∈ 1:n_factors
-            push!(u, σ[i])
+            # The coalition after `i` steps is exactly the permutation's first `i` entries,
+            # so it needs no accumulator of its own.
+            u = @view σ[1:i]
             W = if i == n_factors
                 var_y
             else
@@ -200,9 +201,10 @@ function analyze(
         s = rand(rng, 1:n_samples)
 
         prevW = 0.0
-        u = Int64[]
         for i ∈ 1:n_factors
-            push!(u, σ[i])
+            # The coalition after `i` steps is exactly the permutation's first `i` entries,
+            # so it needs no accumulator of its own.
+            u = @view σ[1:i]
             W = if i == n_factors
                 var_y
             else
