@@ -181,4 +181,11 @@ end
     W = SAShE._nearest_neighbour_double_monte_carlo(Xm, Y, s, [1], 3)
     @test W ≈ var([Y[1], Y[3], Y[4]])
     @test W ≈ var([0.0, 17.0, 29.0])
+
+    # Same setup, N_I = 4: exercises N_I at a non-default value through the actual neighbour
+    # search, not just the N_I < 2 rejection path -- the third external neighbour (after rows
+    # 3, 4) is row 5, with row 2 farthest (same hand-verified distance ordering as above).
+    W4 = SAShE._nearest_neighbour_double_monte_carlo(Xm, Y, s, [1], 4)
+    @test W4 ≈ var([Y[1], Y[3], Y[4], Y[5]])
+    @test W4 ≈ var([0.0, 17.0, 29.0, 28.0])
 end
