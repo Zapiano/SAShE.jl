@@ -56,10 +56,10 @@ The first two *data settings* run through `analyze(model, sample)`, where the mo
           <a href="references/#References">[1]</a>, §6.1.2 Eq. (23)<br>
           Multiplies the reference row's own output by its nearest neighbour's, both already
           in the dataset — zero model calls.</td>
-      <td>🔲 Planned<br>
+      <td>✅ <code>analyze(DataModel(X, Y), m, DoubleMonteCarlo())</code><br>
           <a href="references/#References">[1]</a>, §6.1.1 Eq. (18)<br>
-          The "knn" inner variance, reusing dataset outputs rather than evaluating — would
-          also cost zero model calls.</td>
+          The "knn" inner variance over <code>N_I</code> nearest neighbours, reusing dataset
+          outputs rather than evaluating — zero model calls.</td>
     </tr>
   </tbody>
 </table>
