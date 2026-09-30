@@ -256,10 +256,15 @@ of the same quantity for any `N_I ≥ 2` — there's no algebraic identity here 
 A single `Float64`: the estimate of `c(u) = E(Var(Y | X₋ᵤ))`.
 """
 function _nearest_neighbour_double_monte_carlo(
-    X::AbstractMatrix, Y::AbstractVector{<:Real}, s::Integer, u::AbstractVector{<:Integer},
-    N_I::Integer; rng::AbstractRNG=default_rng(),
+    X::AbstractMatrix,
+    Y::AbstractVector{<:Real},
+    s::Integer,
+    u::AbstractVector{<:Integer},
+    N_I::Integer;
+    rng::AbstractRNG=default_rng(),
 )::Float64
-    notU = setdiff(1:size(X, 2), u)
+    n_factors = size(X, 2)
+    notU = setdiff(1:n_factors, u)
     neighbours = _nearest_neighbour_indices(X, s, notU, N_I - 1; rng=rng)
 
     y_vals = Vector{Float64}(undef, N_I)
